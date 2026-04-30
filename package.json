@@ -14,15 +14,26 @@
     "@nuxt/fonts": "0.14.0",
     "@nuxt/icon": "2.2.1",
     "@nuxt/image": "2.0.0",
+    "@supabase/supabase-js": "^2.105.1",
+    "@vee-validate/zod": "^4.15.1",
+    "adhan": "^4.4.3",
+    "dayjs": "^1.11.20",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "eslint": "^9.0.0 || ^10.0.0",
+    "hijri-js": "^1.0.25",
     "nuxt": "^4.4.2",
     "postgres": "^3.4.9",
+    "qrcode": "^1.5.4",
+    "slugify": "^1.6.9",
+    "vee-validate": "^4.15.1",
     "vue": "^3.5.33",
-    "vue-router": "^5.0.6"
+    "vue-router": "^5.0.6",
+    "zod": "^4.4.1"
   },
   "devDependencies": {
+    "@iconify-json/lucide": "^1.2.104",
+    "@types/qrcode": "^1.5.6",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.21.0"
   }
