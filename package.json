@@ -14,6 +14,7 @@
     "@nuxt/fonts": "0.14.0",
     "@nuxt/icon": "2.2.1",
     "@nuxt/image": "2.0.0",
+    "@nuxtjs/tailwindcss": "6.14.0",
     "@supabase/supabase-js": "^2.105.1",
     "@vee-validate/zod": "^4.15.1",
     "adhan": "^4.4.3",
