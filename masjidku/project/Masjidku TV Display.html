@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Masjidku — TV Display</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Lora:wght@400;500;600;700&family=Amiri:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: oklch(0.18 0.04 155);
+    --bg-2: oklch(0.22 0.05 155);
+    --bg-3: oklch(0.28 0.06 155);
+    --line: oklch(0.32 0.05 155);
+    --line-soft: oklch(0.26 0.05 155 / 0.6);
+    --ink: oklch(0.97 0.015 90);
+    --ink-2: oklch(0.85 0.03 100);
+    --muted: oklch(0.65 0.04 145);
+    --gold: oklch(0.78 0.10 78);
+    --gold-2: oklch(0.85 0.07 78);
+    --green: oklch(0.55 0.10 155);
+    --rose: oklch(0.70 0.12 25);
+
+    --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+    --font-serif: "Lora", Georgia, serif;
+    --font-arab: "Amiri", serif;
+    --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    overflow: hidden;
+  }
+
+  /* Stage scales 1920×1080 to fit any TV */
+  .stage {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: var(--bg);
+  }
+  .canvas {
+    width: 1920px;
+    height: 1080px;
+    position: relative;
+    transform-origin: center center;
+    background: radial-gradient(ellipse at top, oklch(0.24 0.06 155), var(--bg) 60%);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 48px 80px 48px;
+    gap: 36px;
+  }
+
+  /* Khatam pattern — soft on background, brighter as decorative */
+  .khatam-bg {
+    position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'><g fill='none' stroke='white' stroke-width='1' stroke-opacity='0.045'><path d='M80 10 L104 34 L136 34 L136 66 L160 80 L136 94 L136 126 L104 126 L80 150 L56 126 L24 126 L24 94 L0 80 L24 66 L24 34 L56 34 Z'/><path d='M80 30 L96 46 L120 46 L120 70 L136 80 L120 90 L120 114 L96 114 L80 130 L64 114 L40 114 L40 90 L24 80 L40 70 L40 46 L64 46 Z'/></g></svg>");
+    background-size: 160px 160px;
+    pointer-events: none;
+  }
+  .khatam-corner {
+    position: absolute;
+    width: 380px; height: 380px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='190' height='190' viewBox='0 0 190 190'><g fill='none' stroke='%23d4af37' stroke-width='1.2' stroke-opacity='0.32'><path d='M95 6 L122 33 L157 33 L157 68 L184 95 L157 122 L157 157 L122 157 L95 184 L68 157 L33 157 L33 122 L6 95 L33 68 L33 33 L68 33 Z'/><path d='M95 28 L114 47 L143 47 L143 76 L162 95 L143 114 L143 143 L114 143 L95 162 L76 143 L47 143 L47 114 L28 95 L47 76 L47 47 L76 47 Z'/><circle cx='95' cy='95' r='18'/><circle cx='95' cy='95' r='8'/></g></svg>");
+    background-size: contain;
+    background-repeat: no-repeat;
+    opacity: 0.55;
+    pointer-events: none;
+  }
+  .khatam-corner.tl { top: -120px; left: -120px; }
+  .khatam-corner.br { bottom: -120px; right: -120px; transform: rotate(180deg); }
+
+  /* Top brand row */
+  .topbar {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 2;
+  }
+  .brand { display: flex; align-items: center; gap: 18px; }
+  .brand .mark {
+    width: 56px; height: 56px;
+    border-radius: 14px;
+    background: var(--gold);
+    color: var(--bg);
+    display: grid; place-items: center;
+    box-shadow: 0 0 0 1px oklch(0.85 0.07 78 / 0.5), 0 8px 32px -12px oklch(0.78 0.10 78 / 0.5);
+  }
+  .brand .nm {
+    font-family: var(--font-serif);
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  .brand .sub {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  .top-meta {
+    text-align: right;
+    font-size: 14px;
+    color: var(--ink-2);
+    letter-spacing: 0.5px;
+  }
+  .top-meta .tm {
+    font-family: var(--font-mono);
+    font-weight: 500;
+  }
+  .top-meta .live {
+    color: var(--gold);
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-left: 16px;
+  }
+  .top-meta .live .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 0 0 var(--gold);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 oklch(0.78 0.10 78 / 0.7); }
+    70% { box-shadow: 0 0 0 14px oklch(0.78 0.10 78 / 0); }
+    100% { box-shadow: 0 0 0 0 oklch(0.78 0.10 78 / 0); }
+  }
+
+  /* Hero — clock + next prayer */
+  .hero {
+    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 56px;
+    align-items: center;
+    z-index: 2;
+  }
+
+  .clock-block .label {
+    font-size: 13px;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    color: var(--gold-2);
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .clock-block .label::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--gold-2), transparent);
+    max-width: 220px;
+  }
+  .clock-block .time {
+    font-family: var(--font-serif);
+    font-size: 152px;
+    font-weight: 500;
+    line-height: 0.95;
+    letter-spacing: -5px;
+    color: var(--ink);
+  }
+  .clock-block .time .sec {
+    color: var(--gold);
+    font-size: 72px;
+    margin-left: 10px;
+    vertical-align: 0.5em;
+    letter-spacing: 0;
+  }
+  .clock-block .date {
+    margin-top: 18px;
+    display: flex; align-items: center; gap: 26px;
+    color: var(--ink-2);
+  }
+  .clock-block .date .greg {
+    font-size: 22px;
+    font-weight: 500;
+  }
+  .clock-block .date .sep {
+    width: 1px; height: 26px;
+    background: var(--line);
+  }
+  .clock-block .date .hijri {
+    font-size: 22px;
+    color: var(--gold-2);
+    font-family: var(--font-serif);
+    font-style: italic;
+  }
+  .clock-block .ayat { display: none; }
+
+  /* Next prayer card */
+  .next-card {
+    background: linear-gradient(155deg, oklch(0.26 0.06 155), oklch(0.20 0.05 155));
+    border: 1px solid var(--line);
+    border-radius: 28px;
+    padding: 40px 44px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 30px 60px -30px oklch(0.10 0.03 155 / 0.7);
+  }
+  .next-card::before {
+    content: "";
+    position: absolute;
+    top: -90px; right: -90px;
+    width: 280px; height: 280px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><g fill='none' stroke='%23d4af37' stroke-width='0.8' stroke-opacity='0.32'><path d='M70 4 L90 24 L116 24 L116 50 L136 70 L116 90 L116 116 L90 116 L70 136 L50 116 L24 116 L24 90 L4 70 L24 50 L24 24 L50 24 Z'/><circle cx='70' cy='70' r='14'/></g></svg>");
+    background-size: contain; background-repeat: no-repeat;
+    opacity: 0.55;
+  }
+  .next-card .hd {
+    font-size: 12px;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    color: var(--gold-2);
+    margin-bottom: 10px;
+  }
+  .next-card .pr-name {
+    font-family: var(--font-serif);
+    font-size: 68px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -1px;
+  }
+  .next-card .pr-ar {
+    font-family: var(--font-arab);
+    font-size: 38px;
+    color: var(--gold);
+    margin-top: 4px;
+    direction: rtl;
+  }
+  .next-card .pr-time {
+    font-family: var(--font-mono);
+    font-size: 56px;
+    font-weight: 500;
+    color: var(--ink);
+    margin-top: 16px;
+    letter-spacing: -1px;
+  }
+  .next-card .countdown {
+    margin-top: 22px;
+    padding-top: 22px;
+    border-top: 1px dashed oklch(0.40 0.05 155);
+    font-size: 14px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .next-card .countdown b {
+    display: block;
+    font-family: var(--font-serif);
+    font-size: 32px;
+    color: var(--gold);
+    margin-top: 6px;
+    letter-spacing: 0;
+    font-weight: 600;
+    text-transform: none;
+  }
+
+  /* Prayer schedule row */
+  .schedule {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    z-index: 2;
+  }
+  .schedule .hd {
+    display: flex; align-items: center; gap: 20px;
+    margin-bottom: 22px;
+    color: var(--gold-2);
+    font-size: 13px;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+  }
+  .schedule .hd::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--line), transparent);
+  }
+  .schedule-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 18px;
+  }
+  .pr {
+    background: oklch(0.22 0.05 155 / 0.55);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 22px 24px;
+    position: relative;
+    transition: all 200ms;
+  }
+  .pr.now {
+    background: linear-gradient(155deg, oklch(0.55 0.10 78), oklch(0.42 0.10 60));
+    border-color: var(--gold);
+    color: var(--bg);
+    box-shadow: 0 18px 48px -18px oklch(0.55 0.12 78 / 0.6);
+  }
+  .pr.passed { opacity: 0.45; }
+  .pr .hd-row {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 14px;
+  }
+  .pr .nm {
+    font-family: var(--font-serif);
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .pr .ar {
+    font-family: var(--font-arab);
+    font-size: 22px;
+    color: var(--gold-2);
+    direction: rtl;
+  }
+  .pr.now .ar { color: oklch(0.20 0.05 155); }
+  .pr .tm {
+    font-family: var(--font-mono);
+    font-size: 44px;
+    font-weight: 500;
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+  .pr .iq {
+    margin-top: 12px;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .pr.now .iq { color: oklch(0.20 0.05 155 / 0.7); }
+  .pr .iq b {
+    font-family: var(--font-mono);
+    color: var(--ink-2);
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    font-size: 14px;
+  }
+  .pr.now .iq b { color: oklch(0.15 0.03 155); }
+  .pr .badge-now {
+    position: absolute;
+    top: -10px; right: 18px;
+    background: var(--bg);
+    color: var(--gold);
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-weight: 700;
+    border: 1px solid var(--gold);
+  }
+
+  /* Bottom — announcement ticker + masjid info */
+  .bottom {
+    flex-shrink: 0;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 32px;
+    align-items: center;
+  }
+  .marquee {
+    background: oklch(0.16 0.04 155 / 0.6);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+    height: 88px;
+    display: flex;
+    align-items: center;
+    position: relative;
+  }
+  .marquee .label {
+    flex-shrink: 0;
+    background: var(--gold);
+    color: var(--bg);
+    height: 100%;
+    display: flex;
+    align-items: center;
+    padding: 0 28px;
+    gap: 12px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    font-size: 14px;
+    position: relative;
+    z-index: 2;
+    box-shadow: 6px 0 12px -6px oklch(0.10 0.03 155 / 0.6);
+  }
+  .marquee .track-wrap {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+  .marquee .track {
+    display: flex;
+    gap: 80px;
+    padding-left: 40px;
+    white-space: nowrap;
+    animation: scroll 60s linear infinite;
+  }
+  .marquee .item {
+    font-size: 22px;
+    color: var(--ink);
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .marquee .item .star {
+    color: var(--gold);
+    font-size: 14px;
+  }
+  .marquee .item b {
+    color: var(--gold);
+    font-weight: 600;
+    margin-right: 6px;
+  }
+  @keyframes scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  .masjid-info {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    padding: 14px 26px;
+    background: oklch(0.16 0.04 155 / 0.6);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    height: 88px;
+  }
+  .masjid-info .col { line-height: 1.2; }
+  .masjid-info .l { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+  .masjid-info .v { font-family: var(--font-serif); font-size: 20px; font-weight: 600; margin-top: 4px; }
+  .masjid-info .v.gold { color: var(--gold); }
+  .masjid-info .sep { width: 1px; height: 38px; background: var(--line); }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="canvas" id="canvas">
+    <div class="khatam-bg"></div>
+    <div class="khatam-corner tl"></div>
+    <div class="khatam-corner br"></div>
+
+    <!-- Top -->
+    <div class="topbar">
+      <div class="brand">
+        <div class="mark">
+          <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2 L14.5 7 L20 7 L20 12.5 L22 14 L20 15.5 L20 21 L14.5 21 L12 22 L9.5 21 L4 21 L4 15.5 L2 14 L4 12.5 L4 7 L9.5 7 Z"/>
+            <circle cx="12" cy="14" r="2.5"/>
+          </svg>
+        </div>
+        <div>
+          <div class="nm">Masjid Al-Hikmah</div>
+          <div class="sub">Jl. KH. Hasyim Asy'ari · Sukamaju</div>
+        </div>
+      </div>
+      <div class="top-meta">
+        <span class="tm" id="now-time">15:24:18</span>
+        <span class="live"><span class="dot"></span> SIARAN LANGSUNG</span>
+      </div>
+    </div>
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="clock-block">
+        <div class="label">Waktu Sekarang</div>
+        <div class="time"><span id="big-time">15:24</span><span class="sec" id="big-sec">:18</span></div>
+        <div class="date">
+          <div class="greg" id="greg-date">Ahad, 17 Mei 2026</div>
+          <div class="sep"></div>
+          <div class="hijri" id="hijri-date">29 Syawwāl 1447 H</div>
+        </div>
+
+        <div class="ayat">
+          <div class="ar" lang="ar">إِنَّ الصَّلَاةَ كَانَتْ عَلَى الْمُؤْمِنِينَ كِتَابًا مَّوْقُوتًا</div>
+          <div class="tr">"Sesungguhnya sholat itu adalah kewajiban yang ditentukan waktunya atas orang-orang yang beriman."</div>
+          <div class="src">QS. An-Nisa : 103</div>
+        </div>
+      </div>
+
+      <div class="next-card">
+        <div class="hd">Sholat Berikutnya</div>
+        <div class="pr-name" id="next-name">Maghrib</div>
+        <div class="pr-ar" id="next-ar">المغرب</div>
+        <div class="pr-time" id="next-time">17:51</div>
+        <div class="countdown">
+          Tersisa
+          <b id="countdown">2 jam 27 menit</b>
+        </div>
+      </div>
+    </div>
+
+    <!-- Prayer schedule -->
+    <div class="schedule">
+      <div class="hd">Jadwal Sholat Lima Waktu</div>
+      <div class="schedule-grid" id="prayer-grid"></div>
+    </div>
+
+    <!-- Bottom -->
+    <div class="bottom">
+      <div class="marquee">
+        <div class="label">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 11v3a4 4 0 0 0 4 4h2l5 4V3L8 7H6a4 4 0 0 0-4 4z"/>
+          </svg>
+          Pengumuman
+        </div>
+        <div class="track-wrap">
+        <div class="track">
+          <span class="item"><b>Selasa, 19 Mei.</b> Kajian Tafsir Al-Mulk bersama Ust. Ahmad Mahfudz, Lc. — Ba'da Maghrib di Ruang Utama. <span class="star">✦</span></span>
+          <span class="item"><b>Jumat, 22 Mei.</b> Khutbah Jumat oleh Ust. Faris Abdullah — Tema: Adab Mencari Ilmu. <span class="star">✦</span></span>
+          <span class="item"><b>Ahad, 24 Mei.</b> Penyaluran Zakat Maal Triwulan untuk 80 mustahik di Halaman Masjid, pukul 09:00. <span class="star">✦</span></span>
+          <span class="item"><b>Renovasi Atap Selatan</b> — Sudah terkumpul Rp 32 jt dari target Rp 50 jt. Mari berinfaq melalui kotak amal. <span class="star">✦</span></span>
+          <span class="item"><b>Pendaftaran TPA Angkatan 14</b> dibuka untuk usia 5–12 tahun. Sekretariat masjid, jam kerja. <span class="star">✦</span></span>
+          <!-- duplicate for seamless loop -->
+          <span class="item"><b>Selasa, 19 Mei.</b> Kajian Tafsir Al-Mulk bersama Ust. Ahmad Mahfudz, Lc. — Ba'da Maghrib di Ruang Utama. <span class="star">✦</span></span>
+          <span class="item"><b>Jumat, 22 Mei.</b> Khutbah Jumat oleh Ust. Faris Abdullah — Tema: Adab Mencari Ilmu. <span class="star">✦</span></span>
+          <span class="item"><b>Ahad, 24 Mei.</b> Penyaluran Zakat Maal Triwulan untuk 80 mustahik di Halaman Masjid, pukul 09:00. <span class="star">✦</span></span>
+        </div>
+        </div>
+      </div>
+
+      <div class="masjid-info">
+        <div class="col">
+          <div class="l">Suhu</div>
+          <div class="v">29°C</div>
+        </div>
+        <div class="sep"></div>
+        <div class="col">
+          <div class="l">Kelembapan</div>
+          <div class="v">68%</div>
+        </div>
+        <div class="sep"></div>
+        <div class="col">
+          <div class="l">Kiblat</div>
+          <div class="v gold">295° NW</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ---------- Scaling: fit 1920x1080 to viewport ----------
+  function fit() {
+    const c = document.getElementById("canvas");
+    const sx = window.innerWidth / 1920;
+    const sy = window.innerHeight / 1080;
+    const s = Math.min(sx, sy);
+    c.style.transform = `scale(${s})`;
+  }
+  window.addEventListener("resize", fit);
+  fit();
+
+  // ---------- Prayer data ----------
+  const prayers = [
+    { id: "subuh",   name: "Subuh",   ar: "الفجر",    time: "04:32", iq: "04:42" },
+    { id: "dzuhur",  name: "Dzuhur",  ar: "الظهر",   time: "11:54", iq: "12:04" },
+    { id: "ashar",   name: "Ashar",   ar: "العصر",   time: "15:18", iq: "15:28" },
+    { id: "maghrib", name: "Maghrib", ar: "المغرب", time: "17:51", iq: "17:56" },
+    { id: "isya",    name: "Isya",    ar: "العشاء", time: "19:04", iq: "19:14" },
+  ];
+
+  function toMin(hhmm) {
+    const [h, m] = hhmm.split(":").map(Number);
+    return h * 60 + m;
+  }
+
+  function pad(n) { return String(n).padStart(2, "0"); }
+
+  function nextPrayer(now) {
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    for (const p of prayers) {
+      if (toMin(p.time) > nowMin) return p;
+    }
+    return prayers[0]; // wraps to subuh tomorrow
+  }
+  function currentPrayer(now) {
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    let curr = null;
+    for (const p of prayers) {
+      if (toMin(p.time) <= nowMin) curr = p;
+    }
+    return curr;
+  }
+
+  function renderGrid(now) {
+    const grid = document.getElementById("prayer-grid");
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const next = nextPrayer(now);
+    const curr = currentPrayer(now);
+    grid.innerHTML = prayers.map(p => {
+      const min = toMin(p.time);
+      const isNext = next.id === p.id;
+      const isCurr = curr && curr.id === p.id && (nowMin - min) < 25;
+      const isPassed = min < nowMin && !isCurr;
+      const cls = isCurr ? "now" : (isPassed ? "passed" : "");
+      const badge = isCurr ? `<div class="badge-now">Sekarang</div>` : "";
+      return `
+        <div class="pr ${cls}">
+          ${badge}
+          <div class="hd-row">
+            <div class="nm">${p.name}</div>
+            <div class="ar">${p.ar}</div>
+          </div>
+          <div class="tm">${p.time}</div>
+          <div class="iq">Iqomah <b>${p.iq}</b></div>
+        </div>
+      `;
+    }).join("");
+
+    // Update next-card
+    document.getElementById("next-name").textContent = next.name;
+    document.getElementById("next-ar").textContent = next.ar;
+    document.getElementById("next-time").textContent = next.time;
+
+    // Countdown
+    let diff = toMin(next.time) - nowMin;
+    if (diff < 0) diff += 24 * 60;
+    const h = Math.floor(diff / 60);
+    const m = diff % 60;
+    const cd = document.getElementById("countdown");
+    cd.textContent = h > 0 ? `${h} jam ${m} menit` : `${m} menit lagi`;
+  }
+
+  // ---------- Clock ----------
+  const dayNames = ["Ahad", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+  const monthNames = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+  const hijriMonths = ["Muḥarram","Ṣafar","Rabīʿ I","Rabīʿ II","Jumādā I","Jumādā II","Rajab","Shaʿbān","Ramadan","Shawwāl","Dhū al-Qaʿdah","Dhū al-Ḥijjah"];
+
+  function approxHijri(date) {
+    // Rough conversion (Umm al-Qura approximation, adequate for display)
+    const jd = Math.floor((date.getTime() / 86400000) + 2440587.5);
+    const l = jd - 1948440 + 10632;
+    const n = Math.floor((l - 1) / 10631);
+    const l2 = l - 10631 * n + 354;
+    const j = (Math.floor((10985 - l2) / 5316)) * (Math.floor((50 * l2) / 17719))
+            + (Math.floor(l2 / 5670)) * (Math.floor((43 * l2) / 15238));
+    const l3 = l2 - (Math.floor((30 - j) / 15)) * (Math.floor((17719 * j) / 50))
+              - (Math.floor(j / 16)) * (Math.floor((15238 * j) / 43)) + 29;
+    const month = Math.floor((24 * l3) / 709);
+    const day = l3 - Math.floor((709 * month) / 24);
+    const year = 30 * n + j - 30;
+    return { day, month, year };
+  }
+
+  function tick() {
+    const now = new Date();
+    const hh = pad(now.getHours());
+    const mm = pad(now.getMinutes());
+    const ss = pad(now.getSeconds());
+    document.getElementById("now-time").textContent = `${hh}:${mm}:${ss}`;
+    document.getElementById("big-time").textContent = `${hh}:${mm}`;
+    document.getElementById("big-sec").textContent = `:${ss}`;
+
+    const greg = `${dayNames[now.getDay()]}, ${now.getDate()} ${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+    document.getElementById("greg-date").textContent = greg;
+
+    const h = approxHijri(now);
+    document.getElementById("hijri-date").textContent = `${h.day} ${hijriMonths[h.month - 1]} ${h.year} H`;
+
+    renderGrid(now);
+  }
+  tick();
+  setInterval(tick, 1000);
+</script>
+
+</body>
+</html>
