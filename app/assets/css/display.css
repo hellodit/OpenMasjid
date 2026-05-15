@@ -1,0 +1,37 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Lora:wght@400;500;600;700&family=Amiri:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .khatam-bg {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'><g fill='none' stroke='white' stroke-width='1' stroke-opacity='0.045'><path d='M80 10 L104 34 L136 34 L136 66 L160 80 L136 94 L136 126 L104 126 L80 150 L56 126 L24 126 L24 94 L0 80 L24 66 L24 34 L56 34 Z'/><path d='M80 30 L96 46 L120 46 L120 70 L136 80 L120 90 L120 114 L96 114 L80 130 L64 114 L40 114 L40 90 L24 80 L40 70 L40 46 L64 46 Z'/></g></svg>");
+    background-size: 160px 160px;
+  }
+
+  .khatam-corner {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='190' height='190' viewBox='0 0 190 190'><g fill='none' stroke='%23d4af37' stroke-width='1.2' stroke-opacity='0.32'><path d='M95 6 L122 33 L157 33 L157 68 L184 95 L157 122 L157 157 L122 157 L95 184 L68 157 L33 157 L33 122 L6 95 L33 68 L33 33 L68 33 Z'/><path d='M95 28 L114 47 L143 47 L143 76 L162 95 L143 114 L143 143 L114 143 L95 162 L76 143 L47 143 L47 114 L28 95 L47 76 L47 47 L76 47 Z'/><circle cx='95' cy='95' r='18'/><circle cx='95' cy='95' r='8'/></g></svg>");
+    background-size: contain;
+    background-repeat: no-repeat;
+  }
+
+  .khatam-card-glyph {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'><g fill='none' stroke='%23d4af37' stroke-width='0.8' stroke-opacity='0.32'><path d='M70 4 L90 24 L116 24 L116 50 L136 70 L116 90 L116 116 L90 116 L70 136 L50 116 L24 116 L24 90 L4 70 L24 50 L24 24 L50 24 Z'/><circle cx='70' cy='70' r='14'/></g></svg>");
+    background-size: contain;
+    background-repeat: no-repeat;
+  }
+
+  .canvas-bg {
+    background:
+      radial-gradient(ellipse at top, oklch(0.24 0.06 155), oklch(0.18 0.04 155) 60%);
+  }
+
+  .next-card-bg {
+    background: linear-gradient(155deg, oklch(0.26 0.06 155), oklch(0.20 0.05 155));
+  }
+
+  .pr-now-bg {
+    background: linear-gradient(155deg, oklch(0.55 0.10 78), oklch(0.42 0.10 60));
+  }
+}
