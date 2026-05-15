@@ -49,7 +49,7 @@ const iconOf = (id: CategoryId) => CATEGORIES.find(c => c.id === id)?.icon ?? 'l
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <AdminKategoriCard
+      <AdminCategoriesCard
         v-for="c in cats"
         :key="c.id"
         v-bind="c"

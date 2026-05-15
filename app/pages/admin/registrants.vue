@@ -106,7 +106,7 @@ const toggleAll = () => {
       </div>
     </div>
 
-    <AdminPendaftarTable
+    <AdminRegistrantsTable
       :rows="filtered"
       :selected="selected"
       @toggle="toggle"

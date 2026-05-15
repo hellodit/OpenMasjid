@@ -69,7 +69,7 @@ const inputCls = 'cms-input w-full h-[42px] px-3.5 border border-cms-border roun
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5">
           <AdminFormField label="Sudut Fajar">
-            <AdminPengaturanSuffixInput
+            <AdminSettingsSuffixInput
               :model-value="20"
               suffix="°"
               type="number"
@@ -77,7 +77,7 @@ const inputCls = 'cms-input w-full h-[42px] px-3.5 border border-cms-border roun
             />
           </AdminFormField>
           <AdminFormField label="Sudut Isya">
-            <AdminPengaturanSuffixInput
+            <AdminSettingsSuffixInput
               :model-value="18"
               suffix="°"
               type="number"
@@ -98,7 +98,7 @@ const inputCls = 'cms-input w-full h-[42px] px-3.5 border border-cms-border roun
         title="Penyesuaian Adzan (Iqamat)"
         description="Sesuaikan waktu adzan dan jeda iqamah untuk setiap sholat fardhu."
       >
-        <AdminPengaturanPrayerTable
+        <AdminSettingsPrayerTable
           v-model:adj="adj"
           v-model:iq="iq"
           :rows="prayers"
@@ -117,21 +117,21 @@ const inputCls = 'cms-input w-full h-[42px] px-3.5 border border-cms-border roun
             <input v-model="jumat" :class="inputCls" type="time">
           </AdminFormField>
           <AdminFormField label="Imsak (sebelum Subuh)">
-            <AdminPengaturanSuffixInput v-model="imsak" suffix="menit" type="number" />
+            <AdminSettingsSuffixInput v-model="imsak" suffix="menit" type="number" />
           </AdminFormField>
         </div>
 
-        <AdminPengaturanToggleRow
+        <AdminSettingsToggleRow
           v-model="showImsak"
           title="Tampilkan Imsak saat Ramadhan"
           description="Otomatis aktif pada bulan Ramadhan menurut kalender hijriyah."
         />
-        <AdminPengaturanToggleRow
+        <AdminSettingsToggleRow
           v-model="showTarawih"
           title="Tampilkan jadwal Tarawih"
           description="Setelah waktu Isya selama Ramadhan."
         />
-        <AdminPengaturanToggleRow
+        <AdminSettingsToggleRow
           v-model="autoAdzan"
           title="Putar adzan otomatis di TV Display"
           description="Audio diputar 30 detik sebelum waktu adzan."
@@ -172,7 +172,7 @@ const inputCls = 'cms-input w-full h-[42px] px-3.5 border border-cms-border roun
         title="Pratinjau TV Display"
         description="Tampilan langsung pada layar utama masjid."
       >
-        <AdminPengaturanTVPreview
+        <AdminSettingsTVPreview
           place="Masjid Al-Hikmah · Bintaro"
           date="Ahad, 17 Mei 2026"
           hijri="3 Dzulqa'dah 1447 H"

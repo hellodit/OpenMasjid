@@ -30,7 +30,7 @@ const textareaCls = 'cms-input w-full min-h-[110px] px-3.5 py-3 border border-cm
       description="Lengkapi informasi kegiatan agar jamaah dapat mengetahui dan mendaftar dengan mudah."
     >
       <template #actions>
-        <AdminBtn variant="ghost" to="/admin/kegiatan">
+        <AdminBtn variant="ghost" to="/admin/events">
           <Icon name="lucide:arrow-left" size="16" /> Kembali ke Daftar
         </AdminBtn>
       </template>
@@ -201,7 +201,7 @@ const textareaCls = 'cms-input w-full min-h-[110px] px-3.5 py-3 border border-cm
 
         <!-- Action bar -->
         <div class="flex justify-between items-center bg-cms-surface border border-cms-border rounded-cms px-4 py-3 sticky bottom-0">
-          <AdminBtn variant="ghost" to="/admin/kegiatan">Batalkan</AdminBtn>
+          <AdminBtn variant="ghost" to="/admin/events">Batalkan</AdminBtn>
           <div class="flex gap-2.5">
             <AdminBtn>Simpan sebagai Draf</AdminBtn>
             <AdminBtn variant="primary">

@@ -13,7 +13,7 @@ useHead({ title: () => `${ev.value.title} — Masjidku CMS` })
 <template>
   <div>
     <div class="flex items-center justify-between mb-[18px]">
-      <AdminBtn variant="ghost" to="/admin/kegiatan">
+      <AdminBtn variant="ghost" to="/admin/events">
         <Icon name="lucide:arrow-left" size="16" /> Kembali ke Daftar
       </AdminBtn>
       <div class="flex gap-2">

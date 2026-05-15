@@ -58,7 +58,7 @@ const save = () => {
       </button>
     </div>
 
-    <AdminPengaturanProfileMasjid v-if="tab === 'profile'" />
-    <AdminPengaturanWaktuSholat   v-else />
+    <AdminSettingsMosqueProfile v-if="tab === 'profile'" />
+    <AdminSettingsPrayerTimes   v-else />
   </div>
 </template>

@@ -4,12 +4,12 @@ const route = useRoute()
 const crumbs = computed<string[]>(() => {
   const p = route.path
   if (p === '/admin') return ['Manajemen', 'Dashboard']
-  if (p.startsWith('/admin/kegiatan/tambah')) return ['Manajemen', 'Kegiatan', 'Tambah']
-  if (/^\/admin\/kegiatan\/[^/]+$/.test(p)) return ['Manajemen', 'Kegiatan', 'Detail']
-  if (p.startsWith('/admin/kegiatan')) return ['Manajemen', 'Kegiatan']
-  if (p.startsWith('/admin/kategori')) return ['Manajemen', 'Kategori']
-  if (p.startsWith('/admin/pendaftar')) return ['Manajemen', 'Pendaftar']
-  if (p.startsWith('/admin/pengaturan')) return ['Sistem', 'Pengaturan']
+  if (p.startsWith('/admin/events/new')) return ['Manajemen', 'Kegiatan', 'Tambah']
+  if (/^\/admin\/events\/[^/]+$/.test(p)) return ['Manajemen', 'Kegiatan', 'Detail']
+  if (p.startsWith('/admin/events')) return ['Manajemen', 'Kegiatan']
+  if (p.startsWith('/admin/categories')) return ['Manajemen', 'Kategori']
+  if (p.startsWith('/admin/registrants')) return ['Manajemen', 'Pendaftar']
+  if (p.startsWith('/admin/settings')) return ['Sistem', 'Pengaturan']
   return ['Manajemen']
 })
 

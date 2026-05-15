@@ -14,7 +14,7 @@ const prayers = [
 ]
 
 const router = useRouter()
-const openDetail = (id: string) => router.push(`/admin/kegiatan/${id}`)
+const openDetail = (id: string) => router.push(`/admin/events/${id}`)
 </script>
 
 <template>
@@ -41,7 +41,7 @@ const openDetail = (id: string) => router.push(`/admin/kegiatan/${id}`)
           subtitle="Jadwal yang berlangsung dalam 24 jam ke depan."
         >
           <template #head>
-            <AdminBtn size="sm" to="/admin/kegiatan">Lihat semua →</AdminBtn>
+            <AdminBtn size="sm" to="/admin/events">Lihat semua →</AdminBtn>
           </template>
           <div class="flex flex-col gap-2.5">
             <div

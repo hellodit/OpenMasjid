@@ -14,15 +14,15 @@ interface NavItem {
 const manage: NavItem[] = [
   { id: 'dashboard', name: 'Dashboard', icon: 'lucide:layout-grid', path: '/admin' },
   { id: 'kegiatan',  name: 'Kegiatan',  icon: 'lucide:calendar',
-    path: '/admin/kegiatan', count: EVENTS.length,
-    matches: ['/admin/kegiatan'] },
-  { id: 'kategori',  name: 'Kategori',  icon: 'lucide:tag', path: '/admin/kategori' },
-  { id: 'pendaftar', name: 'Pendaftar', icon: 'lucide:users', path: '/admin/pendaftar', count: 142 },
+    path: '/admin/events', count: EVENTS.length,
+    matches: ['/admin/events'] },
+  { id: 'kategori',  name: 'Kategori',  icon: 'lucide:tag', path: '/admin/categories' },
+  { id: 'pendaftar', name: 'Pendaftar', icon: 'lucide:users', path: '/admin/registrants', count: 142 },
   { id: 'materi',    name: 'Materi Kajian', icon: 'lucide:book-open' },
 ]
 
 const system: NavItem[] = [
-  { id: 'pengaturan', name: 'Pengaturan',   icon: 'lucide:settings', path: '/admin/pengaturan' },
+  { id: 'pengaturan', name: 'Pengaturan',   icon: 'lucide:settings', path: '/admin/settings' },
   { id: 'notif',      name: 'Pemberitahuan', icon: 'lucide:bell', count: 3 },
 ]
 

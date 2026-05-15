@@ -17,7 +17,7 @@ const filtered = computed(() => EVENTS.filter((e) => {
   return true
 }))
 
-const openDetail = (id: string) => router.push(`/admin/kegiatan/${id}`)
+const openDetail = (id: string) => router.push(`/admin/events/${id}`)
 </script>
 
 <template>
@@ -31,7 +31,7 @@ const openDetail = (id: string) => router.push(`/admin/kegiatan/${id}`)
         <AdminBtn variant="default">
           <Icon name="lucide:download" size="16" /> Ekspor
         </AdminBtn>
-        <AdminBtn variant="primary" to="/admin/kegiatan/tambah">
+        <AdminBtn variant="primary" to="/admin/events/new">
           <Icon name="lucide:plus" size="16" /> Tambah Kegiatan
         </AdminBtn>
       </template>
@@ -54,7 +54,7 @@ const openDetail = (id: string) => router.push(`/admin/kegiatan/${id}`)
       <NuxtLink
         v-for="ev in filtered"
         :key="ev.id"
-        :to="`/admin/kegiatan/${ev.id}`"
+        :to="`/admin/events/${ev.id}`"
       >
         <AdminListEventCard :ev="ev" />
       </NuxtLink>

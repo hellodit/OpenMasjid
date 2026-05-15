@@ -107,7 +107,7 @@ const textareaCls = 'cms-input w-full min-h-[110px] px-3.5 py-3 border border-cm
           </AdminFormField>
         </div>
 
-        <AdminPengaturanMapStub
+        <AdminSettingsMapStub
           title="Bintaro Sektor 9, Tangerang Selatan"
           description="−6.2731° LS, 106.7196° BT · zona waktu WIB (UTC+7)"
         />
@@ -141,7 +141,7 @@ const textareaCls = 'cms-input w-full min-h-[110px] px-3.5 py-3 border border-cm
         title="Logo & Identitas Visual"
         description="Diunggah dalam format PNG transparan, minimal 512×512 px."
       >
-        <AdminPengaturanLogoSlot filename="logo-alhikmah.png" size="512×512 · 64 KB" />
+        <AdminSettingsLogoSlot filename="logo-alhikmah.png" size="512×512 · 64 KB" />
 
         <AdminMotifDivider>Banner Publik</AdminMotifDivider>
 
@@ -158,14 +158,14 @@ const textareaCls = 'cms-input w-full min-h-[110px] px-3.5 py-3 border border-cm
         title="Status Publikasi"
         description="Atur visibilitas profil masjid di kanal publik."
       >
-        <AdminPengaturanToggleRow v-model="pubProfile" title="Profil publik aktif" description="Tampilkan di halaman /masjid" />
-        <AdminPengaturanToggleRow v-model="showTv"      title="Tampilkan di TV Display" description="Header pada layar utama" />
-        <AdminPengaturanToggleRow v-model="newRegs"     title="Pendaftaran jamaah baru" description="Buka formulir keanggotaan" />
-        <AdminPengaturanToggleRow v-model="maintenance" title="Mode pemeliharaan" description="Sembunyikan halaman publik" />
+        <AdminSettingsToggleRow v-model="pubProfile" title="Profil publik aktif" description="Tampilkan di halaman /masjid" />
+        <AdminSettingsToggleRow v-model="showTv"      title="Tampilkan di TV Display" description="Header pada layar utama" />
+        <AdminSettingsToggleRow v-model="newRegs"     title="Pendaftaran jamaah baru" description="Buka formulir keanggotaan" />
+        <AdminSettingsToggleRow v-model="maintenance" title="Mode pemeliharaan" description="Sembunyikan halaman publik" />
       </AdminFormSection>
 
       <AdminFormSection title="Pratinjau Identitas">
-        <AdminPengaturanMasjidPreview
+        <AdminSettingsMosquePreview
           :name="nama"
           :arabic="arab"
           :city="kota"

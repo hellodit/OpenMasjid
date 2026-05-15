@@ -45,7 +45,7 @@ const setIq  = (key: string, v: number) => emit('update:iq',  { ...props.iq,  [k
           </span>
         </td>
         <td :class="['px-3.5 py-3 text-[13.5px] align-middle', i < rows.length - 1 ? 'border-b border-cms-border' : '']">
-          <AdminPengaturanStepper
+          <AdminSettingsStepper
             :model-value="adj[p.key] ?? 0"
             show-sign
             @update:model-value="setAdj(p.key, $event)"
@@ -53,7 +53,7 @@ const setIq  = (key: string, v: number) => emit('update:iq',  { ...props.iq,  [k
         </td>
         <td :class="['px-3.5 py-3 text-[13.5px] align-middle', i < rows.length - 1 ? 'border-b border-cms-border' : '']">
           <span v-if="p.noIq" class="text-cms-muted text-[12px]">—</span>
-          <AdminPengaturanStepper
+          <AdminSettingsStepper
             v-else
             :model-value="iq[p.key] ?? 0"
             :min="0"
