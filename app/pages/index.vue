@@ -88,7 +88,7 @@ const statusTone: Record<string, { label: string, cls: string }> = {
         class="absolute inset-0 opacity-[0.07] pointer-events-none"
         style="background-image: radial-gradient(circle at 25% 20%, oklch(0.78 0.10 78) 0, transparent 35%), radial-gradient(circle at 80% 80%, oklch(0.55 0.10 155) 0, transparent 40%);"
       />
-      <div class="relative mx-auto max-w-2xl px-5 pt-9 pb-12">
+      <div class="relative mx-auto max-w-2xl px-5 pt-9 pb-10">
         <div class="text-[11px] uppercase tracking-[2px] text-cms-gold-soft font-semibold mb-3">
           Assalamualaikum
         </div>
@@ -122,7 +122,7 @@ const statusTone: Record<string, { label: string, cls: string }> = {
     </section>
 
     <!-- Prayer card -->
-    <section id="jadwal-sholat" class="px-4 -mt-7 mb-8">
+    <section id="jadwal-sholat" class="px-4 pt-6 mb-8">
       <div class="mx-auto max-w-2xl bg-white rounded-cms-lg border border-cms-border shadow-cms overflow-hidden">
         <!-- Next prayer highlight -->
         <div class="p-5 bg-gradient-to-br from-cms-green-50 to-white border-b border-cms-border">
