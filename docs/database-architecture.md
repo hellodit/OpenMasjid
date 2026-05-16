@@ -110,44 +110,44 @@ Multi-kontak (telepon DKM, email zakat, dsb).
 | `handle_or_url` | `text` |
 
 ### `users`
-Akun internal (admin DKM, operator, kontributor). Autentikasi (login, password reset, session) ditangani oleh **Supabase Auth** — token & session tidak disimpan di tabel aplikasi.
-
-> **Bukan** jamaah pendaftar event (pendaftar disimpan di [`registrants`](#registrants) tanpa wajib akun).
+Semua akun di aplikasi — internal DKM (`owner`/`admin`/`editor`/`viewer`) **maupun** jamaah biasa (`jamaah`). Autentikasi (login, password reset, session) ditangani oleh **Supabase Auth** — token & session tidak disimpan di tabel aplikasi.
 
 | Kolom | Tipe | Catatan |
 |-------|------|---------|
 | `id` | `uuid` PK | sama dengan `auth.users.id` di Supabase |
 | `email` | `citext` UNIQUE | unik global |
-| `full_name` | `text` | |
-| `phone` | `text` | |
-| `role` | `enum('owner','admin','editor','viewer')` NOT NULL | peran user — lihat [matriks di bawah](#role--hak-akses) |
+| `full_name` | `text` NOT NULL | |
+| `phone` | `text` NULL | |
+| `role` | `enum('owner','admin','editor','viewer','jamaah')` NOT NULL DEFAULT `'jamaah'` | peran user — lihat [matriks di bawah](#role--hak-akses) |
 | `avatar_asset_id` | `uuid` FK NULL | |
-| `invited_by` | `uuid` FK → users NULL | siapa yang mengundang |
+| `invited_by` | `uuid` FK → users NULL | siapa yang mengundang (NULL = self-register) |
 | `last_login_at` | `timestamptz` NULL | |
 | `is_active` | `boolean` DEFAULT true | nonaktifkan tanpa hapus |
 | `created_at`, `updated_at`, `deleted_at` | | |
 
 **Index**:
 - `UNIQUE(email)` — lookup login langsung pakai email.
-- `INDEX(role)` — cari semua admin.
+- `INDEX(role)` — cari semua admin / list jamaah.
 
 > Mendukung halaman [auth/login.vue](../app/pages/auth/login.vue) & [auth/forgot-password.vue](../app/pages/auth/forgot-password.vue).
 
 #### Role & Hak Akses
 
-Empat peran utama, dari yang paling tinggi ke paling rendah:
+Lima peran, dari yang paling tinggi ke paling rendah:
 
 | Role | Deskripsi | Hak Akses |
 |------|-----------|-----------|
 | `owner` | Pemilik / Ketua DKM. Hanya boleh ada **1 baris** dengan role ini. | Semua hak `admin` + kelola `users` (undang, ubah role, nonaktifkan, hapus). Mengubah `mosque_profile` dasar (nama, alamat, logo). |
 | `admin` | Pengurus inti DKM. | CRUD: `events`, `categories`, `tags`, `registrants`, `announcements`, `prayer_settings`, `prayer_adjustments`, `prayer_overrides`, `display_settings`, `media_assets`, `mosque_contacts`, `mosque_social_links`. |
-| `editor` | Operator harian (mis. sekretariat, marbot). | CRUD `events`, `registrants` (check-in), `announcements`, upload `media_assets`. **Tidak boleh** ubah pengaturan masjid, jadwal sholat, atau display. |
-| `viewer` | Hanya baca — mis. anggota DKM yang ingin pantau statistik. | Read-only seluruh halaman admin. Tidak ada write. |
+| `editor` | Operator harian (mis. sekretariat, marbot). | CRUD `events`, check-in `registrants`, `announcements`, upload `media_assets`. **Tidak boleh** ubah pengaturan masjid, jadwal sholat, atau display. |
+| `viewer` | Anggota DKM yang hanya pantau statistik. | Read-only seluruh halaman admin. Tidak ada write. |
+| `jamaah` | Jamaah biasa yang ingin daftar event masjid. | Login, lihat & daftar event publik, lihat riwayat kehadiran pribadi, ubah profil sendiri. Tidak punya akses CMS. |
 
 **Constraint**:
 - `CHECK` di aplikasi: minimal 1 user `is_active = true` dengan `role = 'owner'` setiap saat.
 - Hanya `owner` yang boleh mengubah `users.role` user lain.
 - User tidak boleh mengubah `role` dirinya sendiri.
+- Default registrasi publik membuat user dengan `role = 'jamaah'`. Promosi ke role admin harus eksplisit oleh `owner`.
 
 ---
 
@@ -226,28 +226,23 @@ event_tags(event_id, tag_id, PRIMARY KEY(event_id, tag_id))
 ```
 
 ### `registrants`
-Pendaftar event. Tidak wajib login (cukup email + nama + phone).
+Catatan kehadiran jamaah di sebuah event. Wajib login — data identitas (nama, email, phone) diambil dari [`users`](#users) melalui `user_id`. Satu baris = satu jamaah pada satu event.
 
 | Kolom | Tipe | Catatan |
 |-------|------|---------|
 | `id` | `uuid` PK | |
-| `event_id` | `uuid` FK | |
-| `full_name` | `text` NOT NULL | |
-| `email` | `citext` | |
-| `phone` | `text` | format E.164 |
-| `notes` | `text` | catatan dari pendaftar |
-| `status` | `enum('pending','confirmed','attended','cancelled','waitlist')` DEFAULT `'pending'` | |
-| `registered_at` | `timestamptz` NOT NULL DEFAULT now() | |
-| `confirmed_at` | `timestamptz` NULL | |
-| `attended_at` | `timestamptz` NULL | |
-| `checked_in_by` | `uuid` FK → users NULL | siapa yang check-in |
-| `source` | `enum('web','qr','tv','admin','import')` DEFAULT `'web'` | |
+| `event_id` | `uuid` FK → events NOT NULL | |
+| `user_id` | `uuid` FK → users NOT NULL | identitas jamaah |
+| `registered_at` | `timestamptz` NOT NULL DEFAULT now() | waktu daftar |
+| `attended_at` | `timestamptz` NULL | NULL = belum hadir; NOT NULL = sudah check-in |
+| `checked_in_by` | `uuid` FK → users NULL | siapa yang melakukan check-in (`editor`/`admin`) |
+| `source` | `enum('web','qr','admin')` DEFAULT `'web'` | jalur pendaftaran |
 | `created_at`, `updated_at`, `deleted_at` | | |
 
 **Index**:
-- `INDEX(event_id, status)` — hitung kapasitas terpakai.
-- `UNIQUE(event_id, email) WHERE email IS NOT NULL` — cegah double register.
-- `INDEX(email)`, `INDEX(phone)` — cari riwayat jamaah.
+- `UNIQUE(event_id, user_id) WHERE deleted_at IS NULL` — satu jamaah hanya bisa daftar event yang sama sekali.
+- `INDEX(event_id) WHERE attended_at IS NOT NULL` — daftar yang sudah hadir per event.
+- `INDEX(user_id, registered_at DESC)` — riwayat event yang diikuti jamaah.
 
 > Mendukung halaman [admin/registrants.vue](../app/pages/admin/registrants.vue).
 
@@ -362,8 +357,8 @@ Berikut query "kritis" yang sering dipanggil dan index pendukungnya:
 | Query | Tabel | Index |
 |-------|-------|-------|
 | List event terbit, paginasi tanggal | `events` | `(status, start_date DESC)` |
-| Detail event + jumlah pendaftar | `events`, `registrants` | `registrants(event_id, status)` — `COUNT(*) FILTER (WHERE status <> 'cancelled')` |
-| Search registrants berdasarkan nama/email | `registrants` | `INDEX(event_id)` + `INDEX(email)` + `GIN(to_tsvector(full_name))` opsional |
+| Detail event + jumlah pendaftar | `events`, `registrants` | `registrants(event_id)` — `COUNT(*)` untuk total daftar, `COUNT(*) FILTER (WHERE attended_at IS NOT NULL)` untuk yang hadir |
+| Riwayat kehadiran jamaah | `registrants` | `(user_id, registered_at DESC)` join ke `events` |
 | Dashboard "Kegiatan Hari Ini" | `events` | `(start_date)` partial `WHERE deleted_at IS NULL AND status='published'` |
 | TV display data (sholat hari ini, marquee, event hari ini) | `prayer_settings`, `prayer_adjustments`, `prayer_overrides`, `announcements`, `events` | Mostly cached di Redis 1–5 menit, fall back ke DB. |
 
@@ -376,14 +371,14 @@ Berikut query "kritis" yang sering dipanggil dan index pendukungnya:
 ```sql
 -- contoh deklarasi enum tipe-aman
 CREATE TYPE event_status     AS ENUM ('draft','published','ongoing','full','archived');
-CREATE TYPE registrant_status AS ENUM ('pending','confirmed','attended','cancelled','waitlist');
+CREATE TYPE registrant_source AS ENUM ('web','qr','admin');
 CREATE TYPE prayer_name      AS ENUM ('subuh','terbit','dzuhur','ashar','maghrib','isya');
-CREATE TYPE user_role        AS ENUM ('owner','admin','editor','viewer');
+CREATE TYPE user_role        AS ENUM ('owner','admin','editor','viewer','jamaah');
 ```
 
 Constraint check yang wajib:
 - `events`: `CHECK (end_date IS NULL OR end_date >= start_date)`, `CHECK (capacity IS NULL OR capacity > 0)`.
-- `registrants`: `CHECK ((email IS NOT NULL) OR (phone IS NOT NULL))` — minimal salah satu kontak.
+- `registrants`: `CHECK (attended_at IS NULL OR attended_at >= registered_at)`.
 - `prayer_settings`: `CHECK (fajr_angle BETWEEN 12 AND 25)`, `CHECK (isha_angle BETWEEN 12 AND 25)`.
 - `mosque_profile`, `prayer_settings`, `display_settings`: singleton check (lihat masing-masing tabel).
 
@@ -391,10 +386,10 @@ Constraint check yang wajib:
 
 ## 10. Keamanan & Privasi
 
-- **PII** (`registrants.email`, `registrants.phone`) tidak ditampilkan ke endpoint publik. Hanya bisa diakses user dengan `users.role IN ('owner','admin','editor')`.
+- **PII** (`users.email`, `users.phone`, `users.full_name`) hanya boleh diakses oleh user itu sendiri atau user dengan `role IN ('owner','admin','editor')`. Endpoint publik (mis. daftar event) tidak boleh mengembalikan PII pendaftar.
 - **Auth**: login/password reset/session ditangani Supabase Auth. Aplikasi cukup memetakan `auth.users.id` ke baris `users` internal.
 - **Backup**: harian (full) + WAL streaming. Retensi 30 hari.
-- **GDPR/UU PDP**: cascade soft-delete saat user "lupakan saya" — set `full_name='Anonim'`, `email=NULL`, `phone=NULL` pada `registrants` lama yang dimiliki user tsb.
+- **GDPR/UU PDP**: saat user "lupakan saya" — anonymize baris `users` (`full_name='Anonim'`, `email=NULL`, `phone=NULL`, `is_active=false`); baris `registrants` terkait tetap untuk arsip kehadiran tetapi sudah tidak punya PII via FK.
 
 ---
 

@@ -24,7 +24,7 @@ Dibangun dengan **Nuxt 4 + Vue 3 + TailwindCSS**, didukung **PostgreSQL** (via D
 ### CMS Admin
 - **Dashboard** — statistik kegiatan aktif, jamaah terdaftar, tingkat kehadiran, plus chart pendaftaran 7 hari terakhir.
 - **Manajemen Kegiatan** — list/grid view, filter kategori, search, halaman detail, form buat/edit dengan upload banner, tag, dan pemateri.
-- **Pendaftar (Registrants)** — tabel jamaah yang mendaftar tiap kegiatan, lengkap dengan informasi kontak dan waktu daftar.
+- **Pendaftar (Registrants)** — daftar kehadiran jamaah per kegiatan (terhubung ke akun `users`), dengan status hadir/belum dan tombol check-in untuk operator.
 - **Kategori** — kelola taksonomi kegiatan masjid.
 - **Pengaturan Masjid** — profil masjid, logo, koordinat & arah kiblat, metode perhitungan waktu sholat, koreksi menit per waktu sholat, preview tampilan TV.
 - **Manajemen Pengguna** — 4 peran: `owner` (pemilik DKM), `admin` (pengurus inti), `editor` (operator harian), `viewer` (read-only).
