@@ -45,7 +45,7 @@ const isActive = (item: NavItem) => {
       </div>
       <div>
         <div class="font-serif text-[18px] font-semibold leading-[1.1] tracking-[0.2px]">
-          Masjidku
+          OpenMasjid
         </div>
         <div class="text-[11px] uppercase tracking-[1px] text-[oklch(0.78_0.04_155)] mt-0.5">
           Event Management

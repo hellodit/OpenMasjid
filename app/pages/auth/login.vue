@@ -1,6 +1,6 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'auth' })
-useHead({ title: 'Masuk — Masjidku CMS' })
+useHead({ title: 'Masuk — OpenMasjid CMS' })
 
 const email = ref('')
 const password = ref('')

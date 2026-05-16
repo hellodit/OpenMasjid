@@ -8,7 +8,7 @@ import AnnouncementMarquee from '~/components/display/AnnouncementMarquee.vue'
 import MasjidInfo from '~/components/display/MasjidInfo.vue'
 
 useHead({
-  title: 'Masjidku — TV Display',
+  title: 'OpenMasjid — TV Display',
   htmlAttrs: { lang: 'id' },
   bodyAttrs: { class: 'overflow-hidden bg-bg text-ink font-sans' },
 })

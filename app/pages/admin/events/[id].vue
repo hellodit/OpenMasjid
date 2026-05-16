@@ -7,7 +7,7 @@ const ev = computed(() => EVENTS.find(e => e.id === route.params.id) ?? EVENTS[0
 const cat = computed(() => CATEGORIES.find(c => c.id === ev.value.cat))
 const pct = computed(() => Math.round((ev.value.attended / ev.value.capacity) * 100))
 
-useHead({ title: () => `${ev.value.title} — Masjidku CMS` })
+useHead({ title: () => `${ev.value.title} — OpenMasjid CMS` })
 </script>
 
 <template>
@@ -105,7 +105,7 @@ useHead({ title: () => `${ev.value.title} — Masjidku CMS` })
               </div>
               <div>
                 <div class="text-[11px] text-cms-muted uppercase tracking-[0.4px] font-semibold">Email</div>
-                <div class="font-semibold">dkm@masjidku.id</div>
+                <div class="font-semibold">dkm@openmasjid.id</div>
               </div>
             </div>
           </div>

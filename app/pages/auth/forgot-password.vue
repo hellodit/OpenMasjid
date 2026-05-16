@@ -1,6 +1,6 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'auth' })
-useHead({ title: 'Lupa Password — Masjidku CMS' })
+useHead({ title: 'Lupa Password — OpenMasjid CMS' })
 
 const email = ref('')
 const loading = ref(false)

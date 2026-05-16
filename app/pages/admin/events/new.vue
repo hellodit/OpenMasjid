@@ -2,7 +2,7 @@
 import type { CategoryId } from '~/composables/useAdminMock'
 
 definePageMeta({ layout: 'admin' })
-useHead({ title: 'Tambah Kegiatan — Masjidku CMS' })
+useHead({ title: 'Tambah Kegiatan — OpenMasjid CMS' })
 
 const cat = ref<CategoryId>('kajian')
 const tags = ref<string[]>(['pekanan', 'tafsir'])

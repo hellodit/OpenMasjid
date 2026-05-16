@@ -2,7 +2,7 @@
 import type { Registrant } from '~/composables/useAdminMock'
 
 definePageMeta({ layout: 'admin' })
-useHead({ title: 'Pendaftar — Masjidku CMS' })
+useHead({ title: 'Pendaftar — OpenMasjid CMS' })
 
 const { REGISTRANTS } = useAdminMock()
 

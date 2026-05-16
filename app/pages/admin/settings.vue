@@ -1,6 +1,6 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin' })
-useHead({ title: 'Pengaturan — Masjidku CMS' })
+useHead({ title: 'Pengaturan — OpenMasjid CMS' })
 
 type Tab = 'profile' | 'prayer'
 const tab = ref<Tab>('profile')

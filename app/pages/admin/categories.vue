@@ -2,7 +2,7 @@
 import type { CategoryId } from '~/composables/useAdminMock'
 
 definePageMeta({ layout: 'admin' })
-useHead({ title: 'Kategori — Masjidku CMS' })
+useHead({ title: 'Kategori — OpenMasjid CMS' })
 
 const { CATEGORIES } = useAdminMock()
 

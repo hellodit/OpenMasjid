@@ -1,6 +1,6 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'admin' })
-useHead({ title: 'Dashboard — Masjidku CMS' })
+useHead({ title: 'Dashboard — OpenMasjid CMS' })
 
 const { EVENTS } = useAdminMock()
 const today = computed(() => EVENTS.slice(0, 3))

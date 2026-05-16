@@ -26,7 +26,7 @@ const year = new Date().getFullYear()
           </div>
           <div>
             <div class="font-serif text-[20px] font-semibold leading-[1.1] tracking-[0.2px]">
-              Masjidku
+              OpenMasjid
             </div>
             <div class="text-[11px] uppercase tracking-[1.5px] text-[oklch(0.78_0.04_155)] mt-0.5">
               Event Management
@@ -64,7 +64,7 @@ const year = new Date().getFullYear()
         </div>
 
         <div class="text-[12px] text-[oklch(0.70_0.04_155)] flex items-center justify-between">
-          <span>© {{ year }} Masjidku. Hak cipta dilindungi.</span>
+          <span>© {{ year }} OpenMasjid. Hak cipta dilindungi.</span>
           <span class="font-arab text-[18px] text-cms-gold-2 tracking-wide">بَارَكَ اللَّهُ فِيْكُمْ</span>
         </div>
       </div>
@@ -80,7 +80,7 @@ const year = new Date().getFullYear()
           </div>
           <div>
             <div class="font-serif text-[18px] font-semibold leading-[1.1] text-cms-ink">
-              Masjidku
+              OpenMasjid
             </div>
             <div class="text-[10.5px] uppercase tracking-[1.2px] text-cms-muted mt-0.5">
               Event Management
