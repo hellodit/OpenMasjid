@@ -25,7 +25,7 @@ export default {
         rose: 'oklch(0.70 0.12 25)',
 
         // CMS (cream theme)
-        'cms-bg': 'oklch(0.985 0.008 95)',
+        'cms-bg': '#ffffff',
         'cms-surface': '#ffffff',
         'cms-surface-2': 'oklch(0.975 0.012 95)',
         'cms-border': 'oklch(0.91 0.012 100)',
