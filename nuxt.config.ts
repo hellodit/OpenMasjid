@@ -11,5 +11,13 @@ export default defineNuxtConfig({
     '@nuxt/icon',
     '@nuxt/image',
     '@nuxtjs/tailwindcss'
-  ]
+  ],
+
+  runtimeConfig: {
+    databaseUrl: '',
+    public: {
+      supabaseUrl: '',
+      supabaseAnonKey: ''
+    }
+  }
 })
