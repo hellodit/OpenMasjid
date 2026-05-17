@@ -19,6 +19,8 @@ const manage: NavItem[] = [
   { id: 'kategori',  name: 'Kategori',  icon: 'lucide:tag', path: '/admin/categories' },
   { id: 'pendaftar', name: 'Pendaftar', icon: 'lucide:users', path: '/admin/registrants', count: 142 },
   { id: 'materi',    name: 'Materi Kajian', icon: 'lucide:book-open' },
+  { id: 'cashbook',  name: 'Buku Kas',  icon: 'lucide:wallet',
+    path: '/admin/cashbook', matches: ['/admin/cashbook'] },
 ]
 
 const system: NavItem[] = [

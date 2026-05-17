@@ -15,3 +15,20 @@ export const registrantSource = pgEnum('registrant_source', [
   'qr',
   'admin',
 ])
+
+export const transactionType = pgEnum('transaction_type', [
+  'income',
+  'expense',
+  'transfer',
+])
+
+export const cashAccountType = pgEnum('cash_account_type', [
+  'cash',
+  'bank',
+  'ewallet',
+])
+
+export const transactionCategoryType = pgEnum('transaction_category_type', [
+  'income',
+  'expense',
+])
