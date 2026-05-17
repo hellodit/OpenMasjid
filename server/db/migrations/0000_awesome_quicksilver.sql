@@ -1,8 +1,6 @@
-CREATE TYPE "public"."event_language" AS ENUM('id', 'ar', 'en', 'mix');--> statement-breakpoint
 CREATE TYPE "public"."event_status" AS ENUM('draft', 'published', 'ongoing', 'full', 'archived');--> statement-breakpoint
-CREATE TYPE "public"."event_time_anchor" AS ENUM('fix', 'subuh', 'dhuhur', 'ashar', 'maghrib', 'isya');--> statement-breakpoint
 CREATE TYPE "public"."registrant_source" AS ENUM('web', 'qr', 'admin');--> statement-breakpoint
-CREATE TYPE "public"."user_role" AS ENUM('owner', 'admin', 'editor', 'viewer', 'jamaah');--> statement-breakpoint
+CREATE TYPE "public"."user_role" AS ENUM('admin', 'viewer', 'jamaah');--> statement-breakpoint
 CREATE TABLE "categories" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"slug" text NOT NULL,
@@ -17,22 +15,16 @@ CREATE TABLE "events" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"category_id" uuid NOT NULL,
 	"title" text NOT NULL,
-	"arabic_title" text,
 	"slug" text NOT NULL,
-	"description_md" text,
-	"language" "event_language" DEFAULT 'id' NOT NULL,
+	"description" text,
 	"start_date" date NOT NULL,
 	"end_date" date,
 	"start_time" time,
 	"end_time" time,
-	"time_anchor" "event_time_anchor" DEFAULT 'fix' NOT NULL,
-	"time_anchor_offset_min" smallint DEFAULT 0 NOT NULL,
 	"location_name" text,
 	"location_detail" text,
 	"address_full" text,
 	"capacity" integer,
-	"recurrence_rule" text,
-	"requires_registration" boolean DEFAULT true NOT NULL,
 	"livestream_url" text,
 	"is_livestream" boolean DEFAULT false NOT NULL,
 	"is_pinned" boolean DEFAULT false NOT NULL,
@@ -52,7 +44,6 @@ CREATE TABLE "users" (
 	"phone" text,
 	"role" "user_role" DEFAULT 'jamaah' NOT NULL,
 	"avatar_asset_id" uuid,
-	"invited_by" uuid,
 	"last_login_at" timestamp with time zone,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -76,6 +67,14 @@ CREATE TABLE "mosque_profile" (
 	"latitude" numeric(9, 6),
 	"longitude" numeric(9, 6),
 	"timezone" text NOT NULL,
+	"phone" text,
+	"email" text,
+	"whatsapp" text,
+	"website_url" text,
+	"instagram_url" text,
+	"youtube_url" text,
+	"facebook_url" text,
+	"tiktok_url" text,
 	"is_public_profile" boolean DEFAULT true NOT NULL,
 	"is_visible_on_tv" boolean DEFAULT true NOT NULL,
 	"is_registration_open" boolean DEFAULT true NOT NULL,
@@ -102,7 +101,6 @@ CREATE TABLE "registrants" (
 );
 --> statement-breakpoint
 ALTER TABLE "events" ADD CONSTRAINT "events_category_id_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."categories"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "users" ADD CONSTRAINT "users_invited_by_users_id_fk" FOREIGN KEY ("invited_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "registrants" ADD CONSTRAINT "registrants_event_id_events_id_fk" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "registrants" ADD CONSTRAINT "registrants_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "registrants" ADD CONSTRAINT "registrants_checked_in_by_users_id_fk" FOREIGN KEY ("checked_in_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint

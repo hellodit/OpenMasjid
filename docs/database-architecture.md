@@ -28,7 +28,7 @@
 │  users                                                             │
 ├────────────────────────────────────────────────────────────────────┤
 │                       PROFIL MASJID                                │
-│  mosque_profile ── mosque_contacts ── mosque_social_links          │
+│  mosque_profile                                                    │
 ├────────────────────────────────────────────────────────────────────┤
 │                       JADWAL SHOLAT                                │
 │  prayer_settings ── prayer_adjustments ── prayer_overrides         │
@@ -82,6 +82,14 @@ Profil masjid. Hanya satu baris — dipastikan via constraint.
 | `timezone` | `text` NOT NULL | mis. `Asia/Jakarta` |
 | `logo_asset_id` | `uuid` FK → `media_assets.id` NULL | |
 | `banner_asset_id` | `uuid` FK → `media_assets.id` NULL | |
+| `phone` | `text` NULL | telepon sekretariat |
+| `email` | `citext` NULL | email resmi DKM |
+| `whatsapp` | `text` NULL | nomor WhatsApp publik |
+| `website_url` | `text` NULL | |
+| `instagram_url` | `text` NULL | |
+| `youtube_url` | `text` NULL | |
+| `facebook_url` | `text` NULL | |
+| `tiktok_url` | `text` NULL | |
 | `is_public_profile` | `boolean` DEFAULT true | flag "Profil publik aktif" |
 | `is_visible_on_tv` | `boolean` DEFAULT true | |
 | `is_registration_open`| `boolean` DEFAULT true | "Pendaftaran jamaah baru" |
@@ -90,27 +98,10 @@ Profil masjid. Hanya satu baris — dipastikan via constraint.
 
 **Constraint singleton**: `CHECK (id = '00000000-0000-0000-0000-000000000001')`.
 
-### `mosque_contacts`
-Multi-kontak (telepon DKM, email zakat, dsb).
-
-| Kolom | Tipe |
-|-------|------|
-| `id` | `uuid` PK |
-| `kind` | `enum('phone','email','website','whatsapp')` |
-| `value` | `text` |
-| `label` | `text` NULL ("Sekretariat", "Imam") |
-| `is_primary` | `boolean` |
-
-### `mosque_social_links`
-
-| Kolom | Tipe |
-|-------|------|
-| `id` | `uuid` PK |
-| `platform` | `enum('instagram','youtube','facebook','tiktok','x','threads')` |
-| `handle_or_url` | `text` |
+> Kontak (telepon/email/WA/website) dan tautan media sosial sekarang menjadi kolom langsung di `mosque_profile` — single-mosque tidak butuh tabel multi-baris terpisah.
 
 ### `users`
-Semua akun di aplikasi — internal DKM (`owner`/`admin`/`editor`/`viewer`) **maupun** jamaah biasa (`jamaah`). Autentikasi (login, password reset, session) ditangani oleh **Supabase Auth** — token & session tidak disimpan di tabel aplikasi.
+Semua akun di aplikasi — internal DKM (`admin`/`viewer`) **maupun** jamaah biasa (`jamaah`). Autentikasi (login, password reset, session) ditangani oleh **Supabase Auth** — token & session tidak disimpan di tabel aplikasi.
 
 | Kolom | Tipe | Catatan |
 |-------|------|---------|
@@ -118,9 +109,8 @@ Semua akun di aplikasi — internal DKM (`owner`/`admin`/`editor`/`viewer`) **ma
 | `email` | `citext` UNIQUE | unik global |
 | `full_name` | `text` NOT NULL | |
 | `phone` | `text` NULL | |
-| `role` | `enum('owner','admin','editor','viewer','jamaah')` NOT NULL DEFAULT `'jamaah'` | peran user — lihat [matriks di bawah](#role--hak-akses) |
+| `role` | `enum('admin','viewer','jamaah')` NOT NULL DEFAULT `'jamaah'` | peran user — lihat [matriks di bawah](#role--hak-akses) |
 | `avatar_asset_id` | `uuid` FK NULL | |
-| `invited_by` | `uuid` FK → users NULL | siapa yang mengundang (NULL = self-register) |
 | `last_login_at` | `timestamptz` NULL | |
 | `is_active` | `boolean` DEFAULT true | nonaktifkan tanpa hapus |
 | `created_at`, `updated_at`, `deleted_at` | | |
@@ -133,21 +123,19 @@ Semua akun di aplikasi — internal DKM (`owner`/`admin`/`editor`/`viewer`) **ma
 
 #### Role & Hak Akses
 
-Lima peran, dari yang paling tinggi ke paling rendah:
+Tiga peran, dari yang paling tinggi ke paling rendah:
 
 | Role | Deskripsi | Hak Akses |
 |------|-----------|-----------|
-| `owner` | Pemilik / Ketua DKM. Hanya boleh ada **1 baris** dengan role ini. | Semua hak `admin` + kelola `users` (undang, ubah role, nonaktifkan, hapus). Mengubah `mosque_profile` dasar (nama, alamat, logo). |
-| `admin` | Pengurus inti DKM. | CRUD: `events`, `categories`, `tags`, `registrants`, `announcements`, `prayer_settings`, `prayer_adjustments`, `prayer_overrides`, `display_settings`, `media_assets`, `mosque_contacts`, `mosque_social_links`. |
-| `editor` | Operator harian (mis. sekretariat, marbot). | CRUD `events`, check-in `registrants`, `announcements`, upload `media_assets`. **Tidak boleh** ubah pengaturan masjid, jadwal sholat, atau display. |
+| `admin` | Pengurus DKM. | CRUD seluruh entitas CMS: `mosque_profile`, `users`, `events`, `categories`, `tags`, `registrants`, `announcements`, `prayer_settings`, `prayer_adjustments`, `prayer_overrides`, `display_settings`, `media_assets`. |
 | `viewer` | Anggota DKM yang hanya pantau statistik. | Read-only seluruh halaman admin. Tidak ada write. |
 | `jamaah` | Jamaah biasa yang ingin daftar event masjid. | Login, lihat & daftar event publik, lihat riwayat kehadiran pribadi, ubah profil sendiri. Tidak punya akses CMS. |
 
 **Constraint**:
-- `CHECK` di aplikasi: minimal 1 user `is_active = true` dengan `role = 'owner'` setiap saat.
-- Hanya `owner` yang boleh mengubah `users.role` user lain.
+- `CHECK` di aplikasi: minimal 1 user `is_active = true` dengan `role = 'admin'` setiap saat.
+- Hanya `admin` yang boleh mengubah `users.role` user lain.
 - User tidak boleh mengubah `role` dirinya sendiri.
-- Default registrasi publik membuat user dengan `role = 'jamaah'`. Promosi ke role admin harus eksplisit oleh `owner`.
+- Default registrasi publik membuat user dengan `role = 'jamaah'`. Promosi ke role admin harus eksplisit oleh `admin` lain.
 
 ---
 
@@ -173,23 +161,17 @@ Taksonomi kegiatan masjid. Seed bawaan: `kajian`, `tahsin`, `tpa`, `zakat`, `muh
 | `id` | `uuid` PK | |
 | `category_id` | `uuid` FK → categories | |
 | `title` | `text` NOT NULL | |
-| `arabic_title` | `text` NULL | "تفسير سورة الملك" |
 | `slug` | `text` UNIQUE | dipakai di URL publik |
-| `description_md` | `text` | markdown |
-| `language` | `enum('id','ar','en','mix')` DEFAULT `'id'` | |
+| `description` | `text` | markdown |
 | `start_date` | `date` NOT NULL | |
 | `end_date` | `date` NULL | |
-| `start_time` | `time` NULL | NULL jika "Ba'da X" |
+| `start_time` | `time` NULL | |
 | `end_time` | `time` NULL | |
-| `time_anchor` | `enum('fix','subuh','dhuhur','ashar','maghrib','isya')` DEFAULT `'fix'` | "Patokan Waktu" |
-| `time_anchor_offset_min` | `smallint` DEFAULT 0 | jeda dari adzan |
 | `location_name` | `text` | "Ruang Utama Masjid" |
 | `location_detail` | `text` | "Lt. 1, Mihrab Selatan" |
 | `address_full` | `text` | |
 | `capacity` | `int` NULL | |
-| `recurrence_rule` | `text` NULL | iCal RRULE; NULL = tidak berulang |
 | `banner_asset_id` | `uuid` FK → media_assets NULL | |
-| `requires_registration` | `boolean` DEFAULT true | |
 | `livestream_url` | `text` NULL | aktif jika `is_livestream` |
 | `is_livestream` | `boolean` DEFAULT false | |
 | `is_pinned` | `boolean` DEFAULT false | |
@@ -201,7 +183,7 @@ Taksonomi kegiatan masjid. Seed bawaan: `kajian`, `tahsin`, `tpa`, `zakat`, `muh
 - `INDEX(start_date)` — list event tanggal X.
 - `INDEX(status, start_date)` — daftar publik.
 - `INDEX(category_id)`.
-- Full-text: `GIN(to_tsvector('simple', title || ' ' || description_md))`.
+- Full-text: `GIN(to_tsvector('simple', title || ' ' || description))`.
 
 > Status `full` lebih baik dihitung di-view (`SELECT … CASE WHEN registered_count >= capacity THEN 'full'`) ketimbang disimpan agar tidak inkonsisten.
 
@@ -373,7 +355,7 @@ Berikut query "kritis" yang sering dipanggil dan index pendukungnya:
 CREATE TYPE event_status     AS ENUM ('draft','published','ongoing','full','archived');
 CREATE TYPE registrant_source AS ENUM ('web','qr','admin');
 CREATE TYPE prayer_name      AS ENUM ('subuh','terbit','dzuhur','ashar','maghrib','isya');
-CREATE TYPE user_role        AS ENUM ('owner','admin','editor','viewer','jamaah');
+CREATE TYPE user_role        AS ENUM ('admin','viewer','jamaah');
 ```
 
 Constraint check yang wajib:
@@ -386,7 +368,7 @@ Constraint check yang wajib:
 
 ## 10. Keamanan & Privasi
 
-- **PII** (`users.email`, `users.phone`, `users.full_name`) hanya boleh diakses oleh user itu sendiri atau user dengan `role IN ('owner','admin','editor')`. Endpoint publik (mis. daftar event) tidak boleh mengembalikan PII pendaftar.
+- **PII** (`users.email`, `users.phone`, `users.full_name`) hanya boleh diakses oleh user itu sendiri atau user dengan `role = 'admin'`. Endpoint publik (mis. daftar event) tidak boleh mengembalikan PII pendaftar.
 - **Auth**: login/password reset/session ditangani Supabase Auth. Aplikasi cukup memetakan `auth.users.id` ke baris `users` internal.
 - **Backup**: harian (full) + WAL streaming. Retensi 30 hari.
 - **GDPR/UU PDP**: saat user "lupakan saya" — anonymize baris `users` (`full_name='Anonim'`, `email=NULL`, `phone=NULL`, `is_active=false`); baris `registrants` terkait tetap untuk arsip kehadiran tetapi sudah tidak punya PII via FK.
@@ -397,7 +379,7 @@ Constraint check yang wajib:
 
 1. **Migration tool**: rekomendasi [drizzle-kit](https://orm.drizzle.team/) atau [Prisma Migrate]; seeder Node script idiomatis dengan Nuxt server.
 2. **Seed wajib** saat onboarding:
-   - 1 baris `mosque_profile` + 1 `users` (`role = 'owner'`).
+   - 1 baris `mosque_profile` + 1 `users` (`role = 'admin'`).
    - 6 baris `categories` default.
    - 1 baris `prayer_settings` + 6 baris `prayer_adjustments`.
    - 1 baris `display_settings`.
@@ -411,8 +393,8 @@ Hal-hal yang sebaiknya dikonfirmasi sebelum implementasi:
 
 1. **Sumber waktu sholat**: pakai API eksternal (Kemenag, Aladhan) atau kalkulasi sendiri (`adhan-js`)?
 2. **TV display**: real-time via WebSocket/Server-Sent Events, atau polling tiap 30 detik?
-3. **Multi-bahasa konten** (Arab/Indonesia/Inggris): perlu kolom `*_translations` terpisah atau cukup ikut field `arabic_title`/`arabic_name`?
-4. **Recurring events**: cukup simpan `recurrence_rule` (RRULE iCal) dan generate instance on-the-fly, atau materialize ke baris `event_instances`?
+3. **Multi-bahasa konten** (Arab/Indonesia/Inggris): apakah cukup default Indonesia, atau perlu kolom `*_translations` terpisah ke depan?
+4. **Recurring events**: skema saat ini hanya menyimpan event satuan. Bila butuh kajian rutin mingguan, akankah ditangani dengan input manual per occurrence, atau ditambah field `recurrence_rule` (RRULE iCal) di kemudian hari?
 
 ---
 

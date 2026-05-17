@@ -6,7 +6,6 @@ import {
   index,
   integer,
   pgTable,
-  smallint,
   text,
   time,
   timestamp,
@@ -14,7 +13,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core'
 import { categories } from './categories'
-import { eventLanguage, eventStatus, eventTimeAnchor } from './_enums'
+import { eventStatus } from './_enums'
 
 export const events = pgTable(
   'events',
@@ -24,22 +23,16 @@ export const events = pgTable(
       .notNull()
       .references(() => categories.id, { onDelete: 'restrict' }),
     title: text('title').notNull(),
-    arabicTitle: text('arabic_title'),
     slug: text('slug').notNull(),
-    descriptionMd: text('description_md'),
-    language: eventLanguage('language').notNull().default('id'),
+    description: text('description'),
     startDate: date('start_date').notNull(),
     endDate: date('end_date'),
     startTime: time('start_time'),
     endTime: time('end_time'),
-    timeAnchor: eventTimeAnchor('time_anchor').notNull().default('fix'),
-    timeAnchorOffsetMin: smallint('time_anchor_offset_min').notNull().default(0),
     locationName: text('location_name'),
     locationDetail: text('location_detail'),
     addressFull: text('address_full'),
     capacity: integer('capacity'),
-    recurrenceRule: text('recurrence_rule'),
-    requiresRegistration: boolean('requires_registration').notNull().default(true),
     livestreamUrl: text('livestream_url'),
     isLivestream: boolean('is_livestream').notNull().default(false),
     isPinned: boolean('is_pinned').notNull().default(false),

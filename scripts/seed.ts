@@ -55,32 +55,32 @@ async function seedMosqueProfile() {
   console.log(`✓ mosque_profile: ${result.length ? 'inserted singleton' : 'already exists'}`)
 }
 
-async function promoteOwner() {
-  const ownerId = process.env.OWNER_USER_ID
-  if (!ownerId) {
-    console.warn('⚠ OWNER_USER_ID not set — skipping owner promotion.')
+async function promoteAdmin() {
+  const adminId = process.env.ADMIN_USER_ID
+  if (!adminId) {
+    console.warn('⚠ ADMIN_USER_ID not set — skipping admin promotion.')
     return
   }
   const result = await db
     .update(users)
-    .set({ role: 'owner', updatedAt: new Date() })
-    .where(eq(users.id, ownerId))
+    .set({ role: 'admin', updatedAt: new Date() })
+    .where(eq(users.id, adminId))
     .returning({ id: users.id, email: users.email })
   if (result.length === 0) {
     console.warn(
-      `⚠ No users row found for OWNER_USER_ID=${ownerId}. ` +
+      `⚠ No users row found for ADMIN_USER_ID=${adminId}. ` +
         'Make sure the user signed up via Supabase Auth first so the trigger creates a public.users row.',
     )
     return
   }
-  console.log(`✓ users: promoted ${result[0].email} to role='owner'`)
+  console.log(`✓ users: promoted ${result[0].email} to role='admin'`)
 }
 
 async function main() {
   console.log('Seeding OpenMasjid…')
   await seedCategories()
   await seedMosqueProfile()
-  await promoteOwner()
+  await promoteAdmin()
   console.log('Done.')
 }
 

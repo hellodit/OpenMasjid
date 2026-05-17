@@ -27,7 +27,7 @@ Dibangun dengan **Nuxt 4 + Vue 3 + TailwindCSS**, didukung **PostgreSQL** (via D
 - **Pendaftar (Registrants)** — daftar kehadiran jamaah per kegiatan (terhubung ke akun `users`), dengan status hadir/belum dan tombol check-in untuk operator.
 - **Kategori** — kelola taksonomi kegiatan masjid.
 - **Pengaturan Masjid** — profil masjid, logo, koordinat & arah kiblat, metode perhitungan waktu sholat, koreksi menit per waktu sholat, preview tampilan TV.
-- **Manajemen Pengguna** — 4 peran: `owner` (pemilik DKM), `admin` (pengurus inti), `editor` (operator harian), `viewer` (read-only).
+- **Manajemen Pengguna** — 3 peran: `admin` (pengurus DKM), `viewer` (read-only DKM), `jamaah` (jamaah terdaftar).
 - **Auth** — halaman login & lupa password (Supabase Auth).
 
 ### TV Display (Mode Layar Besar)

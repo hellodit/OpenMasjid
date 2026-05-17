@@ -1,5 +1,5 @@
 {
-  "id": "2d928272-9b55-4610-b8dc-53241a639c5f",
+  "id": "83e142f8-e0bf-4f75-b2f1-69a49a1a02cc",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -101,31 +101,17 @@
           "primaryKey": false,
           "notNull": true
         },
-        "arabic_title": {
-          "name": "arabic_title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "slug": {
           "name": "slug",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "description_md": {
-          "name": "description_md",
+        "description": {
+          "name": "description",
           "type": "text",
           "primaryKey": false,
           "notNull": false
-        },
-        "language": {
-          "name": "language",
-          "type": "event_language",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'id'"
         },
         "start_date": {
           "name": "start_date",
@@ -151,21 +137,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "time_anchor": {
-          "name": "time_anchor",
-          "type": "event_time_anchor",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'fix'"
-        },
-        "time_anchor_offset_min": {
-          "name": "time_anchor_offset_min",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
         "location_name": {
           "name": "location_name",
           "type": "text",
@@ -189,19 +160,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": false
-        },
-        "recurrence_rule": {
-          "name": "recurrence_rule",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "requires_registration": {
-          "name": "requires_registration",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
         },
         "livestream_url": {
           "name": "livestream_url",
@@ -399,12 +357,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "invited_by": {
-          "name": "invited_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
         "last_login_at": {
           "name": "last_login_at",
           "type": "timestamp with time zone",
@@ -471,21 +423,7 @@
           "with": {}
         }
       },
-      "foreignKeys": {
-        "users_invited_by_users_id_fk": {
-          "name": "users_invited_by_users_id_fk",
-          "tableFrom": "users",
-          "tableTo": "users",
-          "columnsFrom": [
-            "invited_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -586,6 +524,54 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "phone": {
+          "name": "phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "whatsapp": {
+          "name": "whatsapp",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "website_url": {
+          "name": "website_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "instagram_url": {
+          "name": "instagram_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "youtube_url": {
+          "name": "youtube_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "facebook_url": {
+          "name": "facebook_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tiktok_url": {
+          "name": "tiktok_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "is_public_profile": {
           "name": "is_public_profile",
@@ -843,16 +829,6 @@
     }
   },
   "enums": {
-    "public.event_language": {
-      "name": "event_language",
-      "schema": "public",
-      "values": [
-        "id",
-        "ar",
-        "en",
-        "mix"
-      ]
-    },
     "public.event_status": {
       "name": "event_status",
       "schema": "public",
@@ -862,18 +838,6 @@
         "ongoing",
         "full",
         "archived"
-      ]
-    },
-    "public.event_time_anchor": {
-      "name": "event_time_anchor",
-      "schema": "public",
-      "values": [
-        "fix",
-        "subuh",
-        "dhuhur",
-        "ashar",
-        "maghrib",
-        "isya"
       ]
     },
     "public.registrant_source": {
@@ -889,9 +853,7 @@
       "name": "user_role",
       "schema": "public",
       "values": [
-        "owner",
         "admin",
-        "editor",
         "viewer",
         "jamaah"
       ]
