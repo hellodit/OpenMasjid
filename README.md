@@ -62,52 +62,58 @@ Dibangun dengan **Nuxt 4 + Vue 3 + TailwindCSS**, didukung **PostgreSQL** (via D
 
 ## Screenshot
 
-> Screenshot tersimpan di folder [docs/screenshots/](docs/screenshots/). Klik gambar untuk versi penuh.
+> Galeri singkat dari tiga permukaan OpenMasjid. Klik gambar untuk versi penuh — file aslinya tersimpan di [docs/screenshot/](docs/screenshot/).
 
-### Portal Jamaah
-Halaman publik profil & kegiatan masjid.
-
-![Portal Jamaah](docs/screenshots/portal-jamaah.png)
-
-### Dashboard Admin
-Ringkasan kegiatan, jamaah, dan tingkat kehadiran.
-
-![Dashboard Admin](docs/screenshots/admin-dashboard.png)
-
-### Daftar Kegiatan (Admin)
-List/grid kegiatan dengan filter kategori dan pencarian.
-
-![Daftar Kegiatan](docs/screenshots/admin-events.png)
-
-### Detail Kegiatan (Admin)
-Detail kegiatan beserta daftar pendaftar.
-
-![Detail Kegiatan](docs/screenshots/admin-event-detail.png)
-
-### Form Buat / Edit Kegiatan
-Form lengkap dengan upload banner, kategori, tag, pemateri, dan jadwal.
-
-![Form Kegiatan](docs/screenshots/admin-event-form.png)
-
-### Pendaftar (Registrants)
-Tabel jamaah yang terdaftar di tiap kegiatan.
-
-![Registrants](docs/screenshots/admin-registrants.png)
-
-### Pengaturan Masjid
-Profil masjid, logo, metode perhitungan sholat, dan preview TV.
-
-![Settings](docs/screenshots/admin-settings.png)
-
-### TV Display
-Tampilan layar besar untuk ruang utama masjid.
-
-![TV Display](docs/screenshots/tv-display.png)
-
-### Auth — Login
-Halaman login pengurus DKM.
-
-![Login](docs/screenshots/auth-login.png)
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <a href="docs/screenshot/tv-display.png">
+        <img src="docs/screenshot/tv-display.png" alt="TV Display" />
+      </a>
+      <br />
+      <sub><b>📺 TV Display</b><br />Layar besar — jam, jadwal sholat, & pengumuman</sub>
+    </td>
+    <td width="50%" align="center">
+      <a href="docs/screenshot/admin-dashboard.png">
+        <img src="docs/screenshot/admin-dashboard.png" alt="Dashboard Admin" />
+      </a>
+      <br />
+      <sub><b>📊 Dashboard Admin</b><br />Ringkasan kegiatan, jamaah, donasi, & kehadiran</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <a href="docs/screenshot/admin-events.png">
+        <img src="docs/screenshot/admin-events.png" alt="Daftar Kegiatan" />
+      </a>
+      <br />
+      <sub><b>📅 Daftar Kegiatan</b><br />List kegiatan dengan filter, pencarian, & statistik</sub>
+    </td>
+    <td width="50%" align="center">
+      <a href="docs/screenshot/admin-categories.png">
+        <img src="docs/screenshot/admin-categories.png" alt="Kategori Kegiatan" />
+      </a>
+      <br />
+      <sub><b>🏷️ Kategori Kegiatan</b><br />Kajian, Tahsin, TPA, Zakat, Hari Besar Islam</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <a href="docs/screenshot/admin-registrants.png">
+        <img src="docs/screenshot/admin-registrants.png" alt="Pendaftar" />
+      </a>
+      <br />
+      <sub><b>👥 Pendaftar</b><br />Daftar jamaah & status kehadiran per kegiatan</sub>
+    </td>
+    <td width="50%" align="center">
+      <a href="docs/screenshot/portal-jamaah.png">
+        <img src="docs/screenshot/portal-jamaah.png" alt="Portal Jamaah" />
+      </a>
+      <br />
+      <sub><b>🕌 Portal Jamaah</b><br />Halaman publik profil & kegiatan masjid</sub>
+    </td>
+  </tr>
+</table>
 
 ---
 
