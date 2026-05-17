@@ -9,7 +9,7 @@ defineProps<Props>()
 </script>
 
 <template>
-  <div class="relative z-10 flex-1 flex flex-col justify-center">
+  <div class="relative z-10">
     <div
       class="flex items-center text-gold-2 uppercase"
       style="gap: 1.04vw; margin-bottom: 1.15vw; font-size: 0.68vw; letter-spacing: 0.26vw;"

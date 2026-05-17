@@ -69,6 +69,15 @@ const statusTone: Record<string, { label: string, cls: string }> = {
             OpenMasjid · Profil & Kegiatan
           </div>
         </div>
+        <NuxtLink
+          to="/display"
+          target="_blank"
+          class="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-cms-border bg-white px-3 py-1.5 text-[12px] font-semibold text-cms-green-800 hover:bg-cms-green-50 active:scale-[0.97] transition"
+          aria-label="Buka tampilan Display TV"
+        >
+          <Icon name="lucide:tv" size="14" />
+          <span class="hidden sm:inline">Display TV</span>
+        </NuxtLink>
         <div class="text-right shrink-0">
           <div class="font-mono text-[14px] font-semibold tabular-nums text-cms-ink">
             {{ timeHHMM }}

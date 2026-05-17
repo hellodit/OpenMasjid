@@ -3,7 +3,7 @@ import KhatamBackground from '~/components/display/KhatamBackground.vue'
 import TopBar from '~/components/display/TopBar.vue'
 import ClockBlock from '~/components/display/ClockBlock.vue'
 import NextPrayerCard from '~/components/display/NextPrayerCard.vue'
-import PrayerSchedule from '~/components/display/PrayerSchedule.vue'
+import PrayerSlider from '~/components/display/PrayerSlider.vue'
 import AnnouncementMarquee from '~/components/display/AnnouncementMarquee.vue'
 import MasjidInfo from '~/components/display/MasjidInfo.vue'
 
@@ -68,7 +68,7 @@ const infoItems = [
       />
     </div>
 
-    <PrayerSchedule :prayers="prayers" />
+    <PrayerSlider :prayers="prayers" />
 
     <div
       class="relative z-10 grid items-center flex-shrink-0"
