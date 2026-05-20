@@ -78,7 +78,7 @@ const router = useRouter()
               Lihat semua →
             </NuxtLink>
           </template>
-          <CashbookTransactionTable
+          <AdminCashbookTransactionTable
             :rows="recentData?.data ?? []"
             :loading="recentLoading"
             empty-message="Belum ada transaksi. Mulai dengan mencatat infaq atau donasi pertama."
@@ -88,7 +88,7 @@ const router = useRouter()
       </div>
 
       <div class="lg:col-span-1">
-        <CashbookBalanceSummary
+        <AdminCashbookBalanceSummary
           :total-balance="summary?.totalBalance ?? '0'"
           :accounts="accountsData ?? []"
         />

@@ -174,7 +174,7 @@ async function onDelete() {
       </AdminPanel>
 
       <AdminPanel v-else>
-        <CashbookTransactionForm
+        <AdminCashbookTransactionForm
           :accounts="accounts ?? []"
           :categories="categories ?? []"
           :initial="{

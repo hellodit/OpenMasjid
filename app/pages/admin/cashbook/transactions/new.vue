@@ -58,7 +58,7 @@ async function onSubmit(payload: Record<string, unknown>) {
       </div>
 
       <AdminPanel>
-        <CashbookTransactionForm
+        <AdminCashbookTransactionForm
           :accounts="accounts ?? []"
           :categories="categories ?? []"
           :initial="{ type: initialType }"

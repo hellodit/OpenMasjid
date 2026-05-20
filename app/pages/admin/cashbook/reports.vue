@@ -131,14 +131,14 @@ const inputCls =
             >Pemasukan</button>
           </div>
         </div>
-        <CashbookCategoryBreakdown
+        <AdminCashbookCategoryBreakdown
           :items="breakdown?.breakdown ?? []"
           empty-message="Belum ada transaksi pada periode ini."
         />
       </div>
 
       <div>
-        <CashbookBalanceSummary
+        <AdminCashbookBalanceSummary
           :total-balance="summary?.totalBalance ?? '0'"
           :accounts="summary?.accounts ?? []"
         />

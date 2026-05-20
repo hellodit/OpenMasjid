@@ -153,7 +153,7 @@ async function seedCashbookCategories() {
         colorToken: top.colorToken ?? null,
         sortOrder: top.sortOrder,
       })
-      .onConflictDoNothing({ target: transactionCategories.slug })
+      .onConflictDoNothing()
       .returning({ id: transactionCategories.id, slug: transactionCategories.slug })
 
     if (topRow) inserted++
@@ -181,7 +181,7 @@ async function seedCashbookCategories() {
           colorToken: child.colorToken ?? null,
           sortOrder: child.sortOrder,
         })
-        .onConflictDoNothing({ target: transactionCategories.slug })
+        .onConflictDoNothing()
         .returning({ id: transactionCategories.id })
       if (res.length) inserted++
     }

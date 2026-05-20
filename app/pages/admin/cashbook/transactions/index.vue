@@ -68,13 +68,13 @@ async function exportCsv() {
       </template>
     </AdminPageHeader>
 
-    <CashbookTransactionFilters
+    <AdminCashbookTransactionFilters
       v-model="baseFilters"
       :accounts="accounts ?? []"
       :categories="categories ?? []"
     />
 
-    <CashbookTransactionTable
+    <AdminCashbookTransactionTable
       :rows="txData?.data ?? []"
       :loading="pending"
       @open="(id: string) => router.push(`/admin/cashbook/transactions/${id}`)"
