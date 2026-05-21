@@ -2,6 +2,22 @@
 
 > Platform digital terpadu untuk DKM (Dewan Kemakmuran Masjid) — satu aplikasi untuk mengelola profil masjid, jadwal sholat, kegiatan kajian, pendaftaran jamaah, hingga tampilan layar TV di ruang utama.
 
+> ## 🎯 Dibuat dengan Metode **Vibe Coding**
+>
+> ### ✨ Aplikasi ini dibangun menggunakan metode **VIBE CODING** ✨
+>
+> Pendekatan pengembangan modern yang memanfaatkan **AI sebagai partner coding** untuk membangun aplikasi production-grade dengan lebih cepat dan efisien.
+>
+> ### 👉 Pelajari selengkapnya di: **[mahirvibecoding.com](https://mahirvibecoding.com/)** 🚀
+>
+> ---
+
+> ⚠️ **Status: Dalam Pengembangan (Not Production Ready)**
+>
+> Project ini masih dalam tahap pengembangan aktif dan **belum siap digunakan di lingkungan produksi**. Fitur, schema database, dan API masih dapat berubah sewaktu-waktu tanpa pemberitahuan.
+>
+> Untuk info lebih lengkap, kolaborasi, atau pertanyaan, hubungi **[@codingtengahmalam](https://instagram.com/codingtengahmalam)** di Instagram atau [Threads](https://threads.net/@codingtengahmalam).
+
 OpenMasjid menggabungkan tiga permukaan utama dalam satu codebase:
 
 1. **Portal Jamaah** — halaman publik berisi profil masjid, jadwal sholat, dan daftar kegiatan yang dapat diikuti.
