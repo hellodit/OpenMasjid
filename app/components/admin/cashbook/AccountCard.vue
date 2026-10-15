@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { accountTypeIcon, accountTypeLabel, formatRupiah } from '~/utils/format'
 import type { CashAccount } from '~/composables/useCashbook'
 
 defineProps<{ account: CashAccount; canEdit?: boolean }>()

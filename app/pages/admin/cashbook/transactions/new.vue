@@ -31,7 +31,7 @@ async function onSubmit(payload: TransactionFormOutput) {
   try {
     const row = await api.createTransaction(payload)
     toast.add({ color: 'success', title: 'Transaksi tersimpan', icon: 'i-lucide-check-circle' })
-    await router.push(`/admin/cashbook/transactions/${row.id}`)
+    await router.push(row?.id ? `/admin/cashbook/transactions/${row.id}` : '/admin/cashbook/transactions')
   } catch (e) {
     toast.add({ color: 'error', title: 'Gagal menyimpan transaksi', description: apiErrorMessage(e, 'Terjadi kesalahan') })
   } finally {

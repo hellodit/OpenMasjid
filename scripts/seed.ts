@@ -113,7 +113,7 @@ const CASHBOOK_CATEGORY_SEED: CashbookSeed[] = [
       { slug: 'zakat-fitrah',  name: 'Fitrah',  icon: 'lucide:wheat',  sortOrder: 2 },
     ],
   },
-  { slug: 'hibah',        name: 'Hibah',         type: 'income', icon: 'lucide:gift-of-the-magi', sortOrder: 5 },
+  { slug: 'hibah',        name: 'Hibah',         type: 'income', icon: 'lucide:gift', sortOrder: 5 },
   { slug: 'pemasukan-lain', name: 'Lain-lain',   type: 'income', icon: 'lucide:circle-dollar-sign', sortOrder: 99 },
 
   // Expense

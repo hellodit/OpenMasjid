@@ -34,6 +34,7 @@ const { data, status: fetchStatus, error } = await useFetch('/api/admin/events',
   })),
 })
 
+const errorMessage = computed(() => (error.value?.data as { statusMessage?: string } | undefined)?.statusMessage ?? error.value?.message)
 const events = computed(() => data.value?.data ?? [])
 const pagination = computed(() => data.value?.pagination)
 
@@ -68,7 +69,7 @@ const openDetail = (id: string) => navigateTo(`/admin/events/${id}`)
       variant="subtle"
       icon="i-lucide-circle-alert"
       title="Gagal memuat kegiatan"
-      :description="error.data?.statusMessage ?? error.message"
+      :description="errorMessage"
       class="mb-4"
     />
 

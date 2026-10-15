@@ -95,7 +95,7 @@ Dibangun dengan **Nuxt 4 + Nuxt UI v4**, **PostgreSQL** via **Drizzle ORM**, val
         <img src="docs/screenshot/admin-dashboard.png" alt="Dashboard Admin" />
       </a>
       <br />
-      <sub><b>📊 Dashboard Admin</b><br />Ringkasan kegiatan, jamaah, donasi, & kehadiran</sub>
+      <sub><b>📊 Dashboard Admin</b><br />Ringkasan kegiatan, jamaah, kas, & kehadiran</sub>
     </td>
   </tr>
   <tr>
@@ -129,6 +129,32 @@ Dibangun dengan **Nuxt 4 + Nuxt UI v4**, **PostgreSQL** via **Drizzle ORM**, val
       <br />
       <sub><b>🕌 Portal Jamaah</b><br />Halaman publik profil & kegiatan masjid</sub>
     </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <a href="docs/screenshot/admin-cashbook.png">
+        <img src="docs/screenshot/admin-cashbook.png" alt="Buku Kas" />
+      </a>
+      <br />
+      <sub><b>💰 Buku Kas</b><br />Saldo, pemasukan, pengeluaran & transaksi terbaru</sub>
+    </td>
+    <td width="50%" align="center">
+      <a href="docs/screenshot/admin-settings.png">
+        <img src="docs/screenshot/admin-settings.png" alt="Pengaturan Masjid" />
+      </a>
+      <br />
+      <sub><b>⚙️ Pengaturan</b><br />Profil masjid & perhitungan jadwal sholat</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <a href="docs/screenshot/transparency.png">
+        <img src="docs/screenshot/transparency.png" alt="Transparansi Keuangan" />
+      </a>
+      <br />
+      <sub><b>🔍 Transparansi</b><br />Ringkasan keuangan publik untuk jamaah</sub>
+    </td>
+    <td width="50%"></td>
   </tr>
 </table>
 

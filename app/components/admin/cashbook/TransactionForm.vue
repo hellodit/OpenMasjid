@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { accountTypeIcon, accountTypeLabel, todayIso } from '~/utils/format'
 import type { FormError, FormSubmitEvent, SelectMenuItem } from '@nuxt/ui'
 import type { z } from 'zod'
 import { transactionCreateSchema } from '#shared/schemas/cashbook'
@@ -96,7 +97,7 @@ function toUiIcon(icon: string | null): string | undefined {
   return icon.includes(':') ? `i-${icon.replace(':', '-')}` : icon
 }
 
-function validate(s: Partial<typeof state>): FormError[] {
+function validate(s: { type?: TxType; accountId?: string; destinationAccountId?: string }): FormError[] {
   const errors: FormError[] = []
   if (s.type === 'transfer' && s.destinationAccountId && s.destinationAccountId === s.accountId)
     errors.push({ name: 'destinationAccountId', message: 'Akun tujuan harus berbeda dari akun sumber' })

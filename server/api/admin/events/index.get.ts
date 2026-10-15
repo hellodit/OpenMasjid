@@ -7,18 +7,32 @@ export default defineEventHandler(async (event) => {
   const params = readZodQuery(event, eventListQuery)
   const today = dateInTimeZone(await getMosqueTimezone())
   const endExpr = sql`COALESCE(${events.endDate}, ${events.startDate})`
+  // Table-qualified on purpose: inside a correlated subquery an unqualified
+  // "id" would bind to registrants.id (see AGENTS.md, Drizzle pitfall).
+  const registered = sql`(SELECT COUNT(*) FROM registrants r WHERE r.event_id = ${sql.raw('"events"."id"')} AND r.deleted_at IS NULL AND r.cancelled_at IS NULL)`
+  const ongoing = and(sql`${events.startDate} <= ${today}`, sql`${endExpr} >= ${today}`)
+  const notOngoing = sql`NOT (${ongoing})`
 
-  // `ongoing` / `full` are derived: filter what SQL can, refine after counting.
+  // Mirrors deriveEventStatus() in SQL so pagination totals stay correct.
   const statusWhere = (() => {
     switch (params.status) {
       case 'draft':
       case 'archived':
         return eq(events.status, params.status)
       case 'published':
+        return and(
+          eq(events.status, 'published'),
+          notOngoing,
+          sql`(${events.capacity} IS NULL OR ${registered} < ${events.capacity})`,
+        )
       case 'full':
-        return eq(events.status, 'published')
+        return and(
+          eq(events.status, 'published'),
+          notOngoing,
+          sql`${events.capacity} IS NOT NULL AND ${registered} >= ${events.capacity}`,
+        )
       case 'ongoing':
-        return and(eq(events.status, 'published'), sql`${events.startDate} <= ${today}`, sql`${endExpr} >= ${today}`)
+        return and(eq(events.status, 'published'), ongoing)
       case 'upcoming':
         return gte(events.startDate, today)
       case 'past':
@@ -54,9 +68,7 @@ export default defineEventHandler(async (event) => {
     db.select({ n: count() }).from(events).where(where),
   ])
 
-  let data = await withEventStats(rows, today)
-  if (params.status === 'full' || params.status === 'published')
-    data = data.filter((e) => e.displayStatus === params.status)
+  const data = await withEventStats(rows, today)
 
   return {
     data,

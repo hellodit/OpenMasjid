@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { firstOfMonthIso, todayIso } from '~/utils/format'
 import type { SelectMenuItem } from '@nuxt/ui'
 import {
   categoriesAsTree,

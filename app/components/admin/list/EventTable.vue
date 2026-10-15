@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { EventListItem } from './EventCard.vue'
+import { bannerClass, dateParts, formatDate, formatTimeRange } from '~/utils/format'
 
 defineProps<{ events: EventListItem[] }>()
 defineEmits<{ open: [id: string] }>()

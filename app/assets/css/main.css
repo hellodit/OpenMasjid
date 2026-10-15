@@ -106,4 +106,7 @@
 
 :root {
   --ui-radius: 0.5rem;
+  /* Brand green is darker than Nuxt UI's default shade-500 mapping. */
+  --ui-primary: var(--ui-color-primary-700);
+  --ui-secondary: var(--ui-color-secondary-600);
 }

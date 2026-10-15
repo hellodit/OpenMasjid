@@ -5,8 +5,24 @@ import { STAFF_ROLES } from '#shared/types/auth'
  * Session state shared across the app. Call `await useAuth().fetchSession()`
  * (route middleware does this) before reading `user` during SSR.
  */
+type RawSession = NonNullable<Awaited<ReturnType<typeof authClient.getSession>>['data']>
+
+/**
+ * What we keep in (SSR-serialized) state. The session token is deliberately
+ * dropped: useState is embedded in the HTML payload, and the token lives in an
+ * httpOnly cookie already.
+ */
+interface SessionData {
+  user: RawSession['user']
+  expiresAt: string | Date
+}
+
+function toSessionData(raw: RawSession | null | undefined): SessionData | null {
+  return raw ? { user: raw.user, expiresAt: raw.session.expiresAt } : null
+}
+
 export function useAuth() {
-  const session = useState<Awaited<ReturnType<typeof authClient.getSession>>['data'] | null>(
+  const session = useState<SessionData | null>(
     'auth:session',
     () => null,
   )
@@ -22,11 +38,18 @@ export function useAuth() {
 
   async function fetchSession(force = false) {
     if (loaded.value && !force) return session.value
-    const headers = import.meta.server ? useRequestHeaders(['cookie']) : undefined
-    const { data } = await authClient.getSession({ fetchOptions: { headers } })
-    session.value = data
+    if (import.meta.server) {
+      // The Better Auth client needs an absolute URL; on the server call the
+      // handler in-process with the incoming cookies forwarded.
+      const raw = await useRequestFetch()<RawSession | null>('/api/auth/get-session').catch(() => null)
+      session.value = toSessionData(raw)
+    }
+    else {
+      const { data } = await authClient.getSession()
+      session.value = toSessionData(data)
+    }
     loaded.value = true
-    return data
+    return session.value
   }
 
   async function signIn(email: string, password: string, rememberMe = true) {

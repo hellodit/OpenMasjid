@@ -2,6 +2,7 @@
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { PersistedEventStatus } from '#shared/utils/events'
 import { eventToFormState } from '~/components/admin/form/EventForm.vue'
+import { dateParts, formatDate, formatTimeRange, initials, timeAgo } from '~/utils/format'
 
 definePageMeta({ layout: 'admin' })
 
@@ -11,6 +12,10 @@ const { isAdmin } = useAuth()
 const id = computed(() => String(route.params.id))
 
 const { data: ev, error, refresh } = await useFetch(() => `/api/admin/events/${id.value}`)
+if (error.value?.statusCode === 404 || error.value?.statusCode === 400)
+  throw createError({ statusCode: 404, statusMessage: 'Kegiatan tidak ditemukan', fatal: true })
+
+const errorMessage = computed(() => (error.value?.data as { statusMessage?: string } | undefined)?.statusMessage ?? error.value?.message)
 
 useHead({ title: () => `${ev.value?.title ?? 'Kegiatan'} — OpenMasjid CMS` })
 
@@ -116,7 +121,7 @@ async function remove() {
       variant="subtle"
       icon="i-lucide-circle-alert"
       title="Kegiatan tidak dapat dimuat"
-      :description="error?.data?.statusMessage ?? error?.message"
+      :description="errorMessage"
     />
 
     <template v-else>

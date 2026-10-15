@@ -86,14 +86,17 @@ function startEdit(cat: TransactionCategory) {
   formOpen.value = true
 }
 
-async function onSubmit(event: FormSubmitEvent<z.output<typeof categoryCreateSchema>>) {
+type CategoryFormOutput = z.output<typeof categoryCreateSchema> | z.output<typeof categoryUpdateSchema>
+
+async function onSubmit(event: FormSubmitEvent<CategoryFormOutput>) {
   submitting.value = true
   try {
     if (editingId.value) {
-      const { type: _type, ...body } = event.data
-      await api.updateCategory(editingId.value, { ...body, parentId: body.parentId ?? null })
+      // categoryUpdateSchema already strips `type` (immutable).
+      await api.updateCategory(editingId.value, { ...event.data, parentId: event.data.parentId ?? null })
     } else {
-      await api.createCategory(event.data)
+      // Validated against categoryCreateSchema in create mode.
+      await api.createCategory(event.data as z.output<typeof categoryCreateSchema>)
     }
     toast.add({
       color: 'success',
@@ -101,7 +104,7 @@ async function onSubmit(event: FormSubmitEvent<z.output<typeof categoryCreateSch
       title: editingId.value ? 'Kategori diperbarui' : 'Kategori dibuat',
       description: event.data.name,
     })
-    activeTab.value = event.data.type ?? activeTab.value
+    activeTab.value = state.type
     formOpen.value = false
     await refresh()
   } catch (e) {

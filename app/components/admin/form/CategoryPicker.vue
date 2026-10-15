@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { bannerClass } from '~/utils/format'
 defineProps<{
   categories: { id: string, slug: string, name: string, icon: string | null }[]
 }>()

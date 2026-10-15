@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatDate, formatRupiah, timeAgo, transactionTypeLabel } from '~/utils/format'
 import {
   apiErrorMessage,
   useCashAccounts,
@@ -94,7 +95,7 @@ const typeBadge = computed(() => {
       variant="subtle"
       icon="i-lucide-alert-circle"
       title="Transaksi tidak ditemukan"
-      :description="loadError?.data?.statusMessage ?? 'Transaksi mungkin sudah dihapus.'"
+      :description="loadError?.statusMessage ?? 'Transaksi mungkin sudah dihapus.'"
       class="max-w-3xl"
     />
 

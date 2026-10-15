@@ -16,6 +16,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   variant: 'default',
   size: 'md',
+  to: undefined,
   type: 'button',
 })
 

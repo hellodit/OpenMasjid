@@ -111,7 +111,7 @@ export function useCashbookApi() {
     updateCategory: (id: string, body: z.input<typeof categoryUpdateSchema>) =>
       $fetch(`/api/admin/cashbook/categories/${id}`, { method: 'PUT', body }),
     deleteCategory: (id: string) =>
-      $fetch(`/api/admin/cashbook/categories/${id}`, { method: 'DELETE' }),
+      $fetch<{ archived?: boolean; deleted?: boolean }>(`/api/admin/cashbook/categories/${id}`, { method: 'DELETE' }),
 
     createTransaction: (body: z.input<typeof transactionCreateSchema>) =>
       $fetch('/api/admin/cashbook/transactions', { method: 'POST', body }),

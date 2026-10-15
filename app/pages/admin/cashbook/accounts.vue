@@ -32,7 +32,7 @@ const emptyState = () => ({
   type: 'cash' as AccountType,
   accountNumber: '',
   holderName: '',
-  openingBalance: '0' as string | number,
+  openingBalance: '0',
   sortOrder: 0,
 })
 const state = reactive(emptyState())
@@ -63,11 +63,14 @@ function startEdit(account: CashAccount) {
   formOpen.value = true
 }
 
-async function onSubmit(event: FormSubmitEvent<z.output<typeof accountCreateSchema>>) {
+type AccountFormOutput = z.output<typeof accountCreateSchema> | z.output<typeof accountUpdateSchema>
+
+async function onSubmit(event: FormSubmitEvent<AccountFormOutput>) {
   submitting.value = true
   try {
     if (editingId.value) await api.updateAccount(editingId.value, event.data)
-    else await api.createAccount(event.data)
+    // Validated against accountCreateSchema in create mode.
+    else await api.createAccount(event.data as z.output<typeof accountCreateSchema>)
     toast.add({
       color: 'success',
       icon: 'i-lucide-check-circle',

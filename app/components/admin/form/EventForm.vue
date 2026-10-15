@@ -1,6 +1,7 @@
 <script lang="ts">
 import type { FormErrorEvent, FormSubmitEvent } from '@nuxt/ui'
 import { eventCreateSchema, type EventInput, type EventOutput } from '#shared/schemas/events'
+import { bannerClass, todayIso } from '~/utils/format'
 
 /** Minimal event shape returned by GET /api/admin/events/:id. */
 export interface EventFormSource {
@@ -22,15 +23,35 @@ export interface EventFormSource {
   isLivestream: boolean
   isPinned: boolean
   requiresRegistration: boolean
-  status: 'draft' | 'published' | 'archived'
+  status: string
   speakers: { name: string, role: string | null }[]
   agenda: { startTime: string | null, endTime: string | null, title: string, person: string | null }[]
 }
 
-export type EventFormState = EventInput & Required<Pick<
-  EventInput,
-  'tags' | 'speakers' | 'agenda' | 'isLivestream' | 'isPinned' | 'requiresRegistration' | 'status'
->>
+/** Form state: text inputs are always strings (the schema maps '' → null). */
+export interface EventFormState {
+  categoryId: string
+  title: string
+  arabicTitle: string
+  description: string
+  tags: string[]
+  startDate: string
+  endDate: string
+  startTime: string
+  endTime: string
+  locationName: string
+  locationDetail: string
+  addressFull: string
+  capacity: number | null
+  bannerUrl: string
+  livestreamUrl: string
+  isLivestream: boolean
+  isPinned: boolean
+  requiresRegistration: boolean
+  status: NonNullable<EventInput['status']>
+  speakers: { name: string, role: string }[]
+  agenda: { startTime: string, endTime: string, title: string, person: string }[]
+}
 
 const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : '')
 
@@ -55,7 +76,7 @@ export function eventToFormState(ev: EventFormSource): EventFormState {
     isLivestream: ev.isLivestream,
     isPinned: ev.isPinned,
     requiresRegistration: ev.requiresRegistration,
-    status: ev.status,
+    status: ev.status as EventFormState['status'],
     speakers: ev.speakers.map(s => ({ name: s.name, role: s.role ?? '' })),
     agenda: ev.agenda.map(a => ({
       startTime: hhmm(a.startTime),
