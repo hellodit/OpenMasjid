@@ -53,3 +53,9 @@ export const teamMemberUpdateSchema = z
     isActive: z.boolean().optional(),
   })
   .refine((v) => v.role !== undefined || v.isActive !== undefined, 'Tidak ada perubahan')
+
+/** GET /api/tenants — public directory & mosque search (landing page). */
+export const tenantSearchQuery = z.object({
+  q: z.string().trim().max(80).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+})

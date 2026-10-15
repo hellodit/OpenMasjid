@@ -92,7 +92,7 @@ Dibangun dengan **Nuxt 4 + Nuxt UI v4**, **PostgreSQL** via **Drizzle ORM**, val
         <img src="docs/screenshot/platform-landing.png" alt="Landing & direktori masjid" />
       </a>
       <br />
-      <sub><b>🌐 Platform</b><br />Landing & direktori masjid</sub>
+      <sub><b>🌐 Platform</b><br />Cari masjid & direktori</sub>
     </td>
     <td width="50%" align="center">
       <a href="docs/screenshot/onboarding.png">
@@ -190,7 +190,7 @@ Dibangun dengan **Nuxt 4 + Nuxt UI v4**, **PostgreSQL** via **Drizzle ORM**, val
 
 | Rute | Mode | Deskripsi |
 |------|------|-----------|
-| `/` | Publik | Landing OpenMasjid + direktori masjid |
+| `/` | Publik | Landing: cari masjid (nama/kota) → beranda masjid, plus direktori |
 | `/register` | Publik | Daftarkan masjid baru (membuat akun pemilik) |
 | `/<masjid>` | Publik | Portal jamaah — profil, jadwal sholat & kegiatan |
 | `/<masjid>/display` | Publik TV | Tampilan layar besar |

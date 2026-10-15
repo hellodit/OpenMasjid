@@ -17,8 +17,8 @@ export default defineTenantHandler('admin', async (event, { db, tenant, user }) 
     .onConflictDoUpdate({ target: mosqueProfile.tenantId, set: values })
     .returning()
 
-  // Keep the directory name in sync and drop the cached timezone/name.
-  await db.update(tenants).set({ name: data.name }).where(eq(tenants.id, tenant.id))
+  // Keep the public directory (name, city) in sync and drop the cached timezone/name.
+  await db.update(tenants).set({ name: data.name, city: data.city ?? null }).where(eq(tenants.id, tenant.id))
   invalidateTenant(tenant.slug)
   return row
 })

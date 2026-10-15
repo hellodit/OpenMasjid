@@ -523,9 +523,9 @@ function eventSchedule(ev: PublicEvent): string {
             <div class="font-serif text-[16px] font-semibold text-white leading-tight">
               {{ mosqueName }}
             </div>
-            <div class="text-[11px] uppercase tracking-[1.2px] text-cms-gold-soft mt-0.5">
+            <NuxtLink to="/" class="block text-[11px] uppercase tracking-[1.2px] text-cms-gold-soft mt-0.5 hover:underline underline-offset-4">
               Powered by OpenMasjid
-            </div>
+            </NuxtLink>
           </div>
         </div>
         <p v-if="fullAddress" class="text-[12.5px] leading-relaxed text-white/65 mb-5">

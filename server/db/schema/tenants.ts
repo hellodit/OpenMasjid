@@ -23,6 +23,8 @@ export const tenants = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     slug: text('slug').notNull(),
     name: text('name').notNull(),
+    /** Denormalized from mosque_profile.city for the public directory/search (tenants has no RLS). */
+    city: text('city'),
     status: tenantStatus('status').notNull().default('active'),
     /** The owner is an `admin` user of this tenant with extra rights (team, danger zone). */
     ownerUserId: uuid('owner_user_id').references((): AnyPgColumn => users.id, { onDelete: 'set null' }),
@@ -35,6 +37,7 @@ export const tenants = pgTable(
   },
   (t) => [
     uniqueIndex('tenants_slug_unique').on(t.slug),
+    index('tenants_name_lower_idx').on(sql`lower(${t.name})`),
     check('tenants_slug_format', sql`${t.slug} ~ '^[a-z0-9](?:[a-z0-9-]{1,46}[a-z0-9])$'`),
   ],
 )

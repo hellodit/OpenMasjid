@@ -28,7 +28,7 @@ async function seedTenant() {
     console.log(`✓ tenant: created /${slug}`)
   }
   else {
-    await withTenant(tenant.id, (tx) => seedTenantDefaults(tx))
+    await withTenant(tenant.id, (tx) => seedTenantDefaults(tx, tenant!.id))
     console.log(`✓ tenant: /${slug} exists, defaults ensured`)
   }
   return tenant

@@ -77,8 +77,12 @@ export const CASHBOOK_CATEGORY_SEED: CashbookSeed[] = [
   { slug: 'pengeluaran-lain', name: 'Lain-lain',         type: 'expense', icon: 'lucide:more-horizontal', sortOrder: 99 },
 ]
 
-/** Idempotent: inserts missing default categories and a cash account. Run inside withTenant(). */
-export async function seedTenantDefaults(tx: DbOrTx) {
+/**
+ * Idempotent: inserts missing default categories and a cash account.
+ * Run inside withTenant(). Lookups filter by tenant explicitly — scripts run
+ * as the owner role, which bypasses RLS.
+ */
+export async function seedTenantDefaults(tx: DbOrTx, tenantId: string) {
   const partial = { target: [categories.tenantId, categories.slug], where: sql`deleted_at IS NULL` }
   await tx.insert(categories).values(EVENT_CATEGORY_SEED).onConflictDoNothing(partial)
 
@@ -89,7 +93,11 @@ export async function seedTenantDefaults(tx: DbOrTx) {
       .values({ slug: top.slug, name: top.name, type: top.type, icon: top.icon ?? null, sortOrder: top.sortOrder })
       .onConflictDoNothing(txPartial)
     const parent = await tx.query.transactionCategories.findFirst({
-      where: and(eq(transactionCategories.slug, top.slug), isNull(transactionCategories.deletedAt)),
+      where: and(
+        eq(transactionCategories.tenantId, tenantId),
+        eq(transactionCategories.slug, top.slug),
+        isNull(transactionCategories.deletedAt),
+      ),
       columns: { id: true },
     })
     if (!parent || !top.children?.length) continue
@@ -106,7 +114,10 @@ export async function seedTenantDefaults(tx: DbOrTx) {
       .onConflictDoNothing(txPartial)
   }
 
-  const hasAccount = await tx.query.cashAccounts.findFirst({ columns: { id: true } })
+  const hasAccount = await tx.query.cashAccounts.findFirst({
+    where: eq(cashAccounts.tenantId, tenantId),
+    columns: { id: true },
+  })
   if (!hasAccount) await tx.insert(cashAccounts).values({ name: 'Kas Tunai', type: 'cash', sortOrder: 1 })
 }
 
@@ -121,7 +132,7 @@ export interface NewTenantInput {
 
 /** Create tenant + mosque profile + default data. Returns the tenant row. */
 export async function provisionTenant(input: NewTenantInput) {
-  const [tenant] = await db.insert(tenants).values({ slug: input.slug, name: input.name }).returning()
+  const [tenant] = await db.insert(tenants).values({ slug: input.slug, name: input.name, city: input.city ?? null }).returning()
   await withTenant(tenant!.id, async (tx) => {
     await tx.insert(mosqueProfile).values({
       name: input.name,
@@ -130,7 +141,7 @@ export async function provisionTenant(input: NewTenantInput) {
       latitude: input.latitude != null ? input.latitude.toFixed(6) : null,
       longitude: input.longitude != null ? input.longitude.toFixed(6) : null,
     })
-    await seedTenantDefaults(tx)
+    await seedTenantDefaults(tx, tenant!.id)
   })
   return tenant!
 }

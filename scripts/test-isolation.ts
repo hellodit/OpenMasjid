@@ -128,6 +128,12 @@ async function main() {
   const B = await fill(b)
   check('both tenants were filled', !!(A.eventId && B.eventId && A.transactionId && B.transactionId))
 
+  // ── Public directory / landing search exposes only global fields ───────
+  const search = await a.req('GET', `${BASE}/api/tenants?q=${encodeURIComponent(`iso-a-${suffix}`)}`)
+  const keys = new Set((search.json as any[]).flatMap((t) => Object.keys(t)))
+  check('directory search finds the mosque by slug', (search.json as any[]).some((t) => t.slug === a.slug))
+  check('directory search exposes only slug/name/city', [...keys].every((k) => ['slug', 'name', 'city'].includes(k)), [...keys].join(','))
+
   // ── Sessions ────────────────────────────────────────────────────────────
   const aOnB = new Client(b.slug)
   aOnB.cookies = new Map(a.cookies)

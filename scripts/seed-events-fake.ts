@@ -9,7 +9,8 @@ import { and, eq, inArray, isNull, like, sql } from 'drizzle-orm'
 import { categories, events, registrants, tenants, users } from '../server/db/schema'
 import type { DbOrTx } from '../server/utils/db'
 
-if (process.env.DATABASE_DIRECT_URL) process.env.DATABASE_URL = process.env.DATABASE_DIRECT_URL
+// Runs as the restricted app role (DATABASE_URL) on purpose: Row Level Security then
+// guarantees every query/delete below stays inside SEED_TENANT_SLUG's mosque.
 const { db: rootDb, withTenant } = await import('../server/utils/db')
 
 const tenantSlug = process.env.SEED_TENANT_SLUG ?? 'al-hikmah'

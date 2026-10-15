@@ -53,6 +53,9 @@ OpenMasjid melayani **banyak masjid (tenant)** dari satu deployment dan satu dat
   tanpa `app.tenant_id` → 0 baris). Kolom `tenant_id` default ke `app.tenant_id`, jadi insert di dalam
   `withTenant` otomatis terlabel. App wajib konek dengan role `openmasjid_app`
   (`server/db/sql/app-role.sql`) — superuser/BYPASSRLS melewati RLS.
+- **Direktori publik:** `GET /api/tenants?q=&limit=` (cari nama/kota/slug, hasil prefix nama di atas).
+  Hanya kolom global `slug`, `name`, `city` dari `tenants`. `tenants.name`/`city` disalin dari
+  `mosque_profile` saat pengaturan disimpan (`settings/mosque.put.ts`) — jangan ekspos kolom lain.
 - **Pengecualian RLS:** tabel auth (`users`, `sessions`, `accounts`, `verifications`) dan `tenants`
   tidak memakai RLS (Better Auth mengaksesnya di luar transaksi tenant). Query ke `users` di handler
   **wajib** filter `eq(users.tenantId, tenant.id)` atau lewat join dari tabel yang ter-RLS.
@@ -88,7 +91,9 @@ app/                      # Frontend (Vue)
   composables/useAuth.ts  # user, isStaff, isAdmin, isOwner, signIn, signOut (per masjid)
   utils/auth-client.ts    # getAuthClient(slug) — Better Auth client per masjid
   utils/format.ts         # formatRupiah, formatDate, initials, timeAgo, … (auto-import)
-  pages/index.vue, daftar.vue  # landing + direktori, onboarding masjid baru
+  pages/index.vue          # landing: hero search masjid (→ /<slug>) + direktori
+  pages/register.vue       # onboarding masjid baru
+  components/platform/     # komponen halaman global (MosqueSearch)
   pages/[tenant]/          # portal, display (TV), transparency, auth/*, admin/** per masjid
   components/admin|display/
 server/
@@ -229,8 +234,13 @@ bun run db:seed                # satu masjid (SEED_TENANT_SLUG) + data default +
 bun run test:isolation         # uji isolasi lintas masjid (butuh server jalan)
 bun run db:seed:cashbook       # transaksi kas palsu (--clean untuk hapus)
 bun run db:seed:events         # kegiatan + jamaah + pendaftar palsu (--clean untuk hapus)
+bun run db:seed:tenants        # beberapa masjid fiktif untuk direktori/pencarian (--clean)
 bun run db:studio
 ```
+
+Script data palsu (`db:seed:events`, `db:seed:cashbook`) sengaja konek sebagai role aplikasi agar
+RLS membatasinya ke satu masjid. Script yang konek sebagai owner (`db:seed`, provisioning) **wajib**
+memfilter `tenant_id` secara eksplisit — RLS tidak berlaku untuk owner/superuser.
 
 Postgres lokal: jalankan `server/db/sql/app-role.sql` sekali, lalu `DATABASE_URL` memakai role
 `openmasjid_app` dan `DATABASE_DIRECT_URL` memakai role owner (lihat `.env.example`).

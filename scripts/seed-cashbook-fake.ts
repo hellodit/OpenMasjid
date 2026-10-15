@@ -9,7 +9,8 @@ import {
 } from '../server/db/schema'
 import type { DbOrTx } from '../server/utils/db'
 
-if (process.env.DATABASE_DIRECT_URL) process.env.DATABASE_URL = process.env.DATABASE_DIRECT_URL
+// Runs as the restricted app role (DATABASE_URL) on purpose: Row Level Security then
+// guarantees every query/delete below stays inside SEED_TENANT_SLUG's mosque.
 const { db: rootDb, withTenant } = await import('../server/utils/db')
 
 // Fake data goes into one mosque: SEED_TENANT_SLUG (default al-hikmah).
