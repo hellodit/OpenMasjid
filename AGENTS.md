@@ -98,8 +98,9 @@ app/                      # Frontend (Vue)
   pages/index.vue          # landing: hero search masjid (→ /<slug>) + direktori
   pages/register.vue       # onboarding masjid baru
   components/platform/     # komponen halaman global (MosqueSearch)
-  pages/[tenant]/          # portal, events/[slug] (daftar), my-tickets, display (TV), transparency,
-                           # auth/* (login, register jamaah), admin/** (termasuk check-in) per masjid
+  pages/[tenant]/          # portal, events/[slug] (daftar), my-tickets, announcements, duties,
+                           # display (TV), transparency, auth/* (login, register jamaah),
+                           # admin/** (setup wizard, pengumuman, jadwal petugas, check-in, …) per masjid
   components/admin|display|portal/
 server/
   middleware/00.tenant.ts # /api/t/<slug>/… → event.context.tenant
@@ -113,9 +114,13 @@ server/
                           # tenant, tenant-provisioning, team, rate-limit, validate, balance, period,
                           # mosque, events, cashbook — util data menerima `db` (tx tenant) sebagai argumen pertama
 shared/                   # Dipakai app & server (import: #shared/...)
-  schemas/*.ts            # Zod: common, auth, cashbook, events, mosque, tenants
+  schemas/*.ts            # Zod: common, auth, cashbook, events, mosque, tenants, announcements, duties
+  data/id-cities.ts       # kota Indonesia (koordinat + zona waktu) untuk wizard lokasi
   utils/prayer.ts         # adhan → jadwal sholat, label hijriyah
   utils/events.ts         # status turunan event/pendaftar
+  utils/announcements.ts  # visibilitas pengumuman (draft/scheduled/active/expired)
+  utils/duties.ts         # label layanan/tugas petugas, urutan, helper tanggal (addDays, nextFriday)
+  utils/slug.ts           # mosqueSlugFromName (dipakai form daftar & server)
   types/auth.ts           # UserRole, STAFF_ROLES
 scripts/                  # seed, seed-*-fake (SEED_TENANT_SLUG), test-isolation, health-check, scheduler
 ```
@@ -220,6 +225,20 @@ scripts/                  # seed, seed-*-fake (SEED_TENANT_SLUG), test-isolation
   - Check-in: `POST /api/t/<slug>/admin/check-in` (akses `admin`, UI `/<slug>/admin/check-in`).
     Tiket tidak valid/masjid lain → 404; pendaftaran batal atau event lain (`eventId`) → 409;
     check-in ulang mengembalikan `alreadyCheckedIn: true`.
+- **Daftar masjid baru** (`POST /api/onboarding`, UI `/register`): hanya nama masjid + akun pemilik
+  (nama, email, password). Slug dibuat dari nama (`mosqueSlugFromName`, lalu `-2`, `-3`… jika terpakai)
+  kecuali pengguna mengisinya sendiri (409 jika terpakai). Zona waktu default WIB, kota/koordinat kosong.
+  Setelah daftar → wizard `/<slug>/admin/setup` (`GET/PATCH admin/setup`): lokasi (kota/GPS/manual →
+  koordinat + zona waktu), alamat & kontak; boleh dilewati. `mosque_profile.setup_completed_at` diisi
+  saat selesai/dilewati. Checklist "Lengkapi profil" di dashboard memakai `checklist` dari endpoint yang sama.
+- **Pengumuman** (`announcements`): status `draft|published|archived`. Tampil publik jika `published`
+  dan tanggal lokal masjid di dalam `[starts_on, ends_on]` (keduanya opsional) — lihat
+  `announcementVisibility()`. Disematkan (`is_pinned`) tampil paling atas; `show_on_display` → marquee TV.
+- **Jadwal petugas** (`duty_assignments`): satu baris = tanggal + layanan (`jumuah`, `fajr`…`isha`,
+  `tarawih`, `eid`, `other`) + tugas (`imam`, `khatib`, `muadzin`, `bilal`, `preacher`, `other`) + nama
+  petugas (bukan akun). Satu orang per slot (unique parsial, kecuali tugas `other`; 409 jika terisi).
+  `POST admin/duties/copy` menyalin rentang tanggal tanpa menimpa slot terisi. No. HP & catatan hanya
+  untuk pengurus — endpoint publik tidak mengembalikannya.
 - **Jadwal sholat**: `computePrayerTimes(date, settings)`; metode `kemenag` = sudut 20°/18° + ihtiyat 2 menit.
   Tanggal selalu tanggal lokal masjid.
 

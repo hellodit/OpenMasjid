@@ -23,7 +23,7 @@ defineProps<Props>()
         Sholat Berikutnya
       </div>
       <div class="font-serif font-semibold leading-none" style="font-size: 3.54vw; letter-spacing: -0.05vw;">{{ name }}</div>
-      <div class="font-arab text-tv-gold" dir="rtl" style="font-size: 1.98vw; margin-top: 0.21vw;">{{ arabic }}</div>
+      <div class="font-arab text-tv-gold leading-tight" dir="rtl" style="font-size: 1.98vw; margin-top: 0.21vw;">{{ arabic }}</div>
       <div class="font-mono font-medium text-tv-ink" style="font-size: 2.92vw; margin-top: 0.83vw; letter-spacing: -0.05vw;">{{ time }}</div>
 
       <div

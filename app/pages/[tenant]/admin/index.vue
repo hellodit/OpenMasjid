@@ -6,7 +6,7 @@ const tp = useTenantPath()
 definePageMeta({ layout: 'admin' })
 useHead({ title: 'Dashboard — OpenMasjid CMS' })
 
-const { user } = useAuth()
+const { user, isAdmin } = useAuth()
 
 const [{ data, error }, { data: prayer }, { data: mosque }, { data: cash }] = await Promise.all([
   useFetch(`${api}/admin/dashboard`),
@@ -61,6 +61,8 @@ const description = computed(() => {
       :hijri="prayer?.hijri"
       :prayers="prayers"
     />
+
+    <AdminSetupChecklistCard v-if="isAdmin" />
 
     <UAlert
       v-if="error"

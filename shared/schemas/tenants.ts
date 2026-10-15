@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { nullableText } from './common'
 
 /** Mirrors the tenants_slug_format CHECK and server RESERVED_SLUGS. */
 export const RESERVED_TENANT_SLUGS = [
@@ -19,12 +18,15 @@ export const tenantSlug = z
 
 const password = z.string().min(8, 'Password minimal 8 karakter').max(128)
 
+/**
+ * Sign-up keeps to the minimum (mosque name + owner account). The address
+ * (slug) is generated from the name unless the user picks one; location,
+ * timezone and contact details are filled in the setup wizard afterwards.
+ */
 export const onboardingSchema = z.object({
   mosque: z.object({
     name: z.string().trim().min(3, 'Nama masjid minimal 3 karakter').max(160),
-    slug: tenantSlug,
-    city: nullableText(120),
-    timezone: z.enum(['Asia/Jakarta', 'Asia/Makassar', 'Asia/Jayapura']),
+    slug: tenantSlug.optional().or(z.literal('').transform(() => undefined)),
   }),
   owner: z.object({
     name: z.string().trim().min(2, 'Nama minimal 2 karakter').max(120),

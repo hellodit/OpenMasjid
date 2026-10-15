@@ -17,12 +17,12 @@ defineProps<Props>()
     style="gap: 1.15vw; height: 4.58vw; padding: 0.73vw 1.35vw; border-radius: 0.83vw; background: oklch(0.16 0.04 155 / 0.6);"
   >
     <template v-for="(it, i) in items" :key="it.label">
-      <div class="leading-tight">
-        <div class="uppercase text-tv-muted" style="font-size: 0.57vw; letter-spacing: 0.10vw;">{{ it.label }}</div>
+      <div class="leading-tight min-w-0">
+        <div class="uppercase text-tv-muted whitespace-nowrap" style="font-size: 0.57vw; letter-spacing: 0.10vw;">{{ it.label }}</div>
         <div
-          class="font-serif font-semibold"
+          class="font-serif font-semibold truncate"
           :class="it.gold ? 'text-tv-gold' : ''"
-          style="font-size: 1.04vw; margin-top: 0.21vw;"
+          style="font-size: 1.04vw; margin-top: 0.21vw; max-width: 13vw;"
         >
           {{ it.value }}
         </div>

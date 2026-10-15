@@ -42,3 +42,21 @@ export const prayerCalcMethod = pgEnum('prayer_calc_method', [
 export const asrMadhab = pgEnum('asr_madhab', ['shafi', 'hanafi'])
 
 export const tenantStatus = pgEnum('tenant_status', ['active', 'suspended'])
+
+export const announcementStatus = pgEnum('announcement_status', ['draft', 'published', 'archived'])
+
+/** Which prayer/service a duty assignment belongs to. */
+export const dutyService = pgEnum('duty_service', [
+  'jumuah',
+  'fajr',
+  'dhuhr',
+  'asr',
+  'maghrib',
+  'isha',
+  'tarawih',
+  'eid',
+  'other',
+])
+
+/** Role of the person on duty (imam, khatib, ...). */
+export const dutyRole = pgEnum('duty_role', ['imam', 'khatib', 'muadzin', 'bilal', 'preacher', 'other'])

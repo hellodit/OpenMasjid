@@ -43,3 +43,9 @@ export function withTenant<T>(tenantId: string, fn: (tx: DbOrTx) => Promise<T>):
     return fn(tx)
   })
 }
+
+/** Postgres unique_violation (23505), also when wrapped by drizzle's query error. */
+export function isUniqueViolation(err: unknown): boolean {
+  const e = err as { code?: string, cause?: { code?: string } } | null
+  return e?.code === '23505' || e?.cause?.code === '23505'
+}

@@ -3,6 +3,7 @@ import type { PrayerState } from '~/composables/usePrayerSchedule'
 import PrayerSchedule from './PrayerSchedule.vue'
 import QRSlide from './QRSlide.vue'
 import CashbookSlide from './CashbookSlide.vue'
+import DutySlide, { type DutySlideColumn } from './DutySlide.vue'
 
 interface CashbookSummary {
   totalBalance: string
@@ -11,17 +12,26 @@ interface CashbookSummary {
   range: { from: string, to: string }
 }
 
+interface DutyRoster {
+  title: string
+  dateLabel: string
+  columns: DutySlideColumn[]
+  topic?: string | null
+}
+
 interface Props {
   prayers: PrayerState[]
   cashbook?: CashbookSummary | null
+  duty?: DutyRoster | null
   interval?: number
 }
-const props = withDefaults(defineProps<Props>(), { interval: 12000, cashbook: null })
+const props = withDefaults(defineProps<Props>(), { interval: 12000, cashbook: null, duty: null })
 
-type Slide = 'prayer' | 'cashbook' | 'qr'
+type Slide = 'prayer' | 'duty' | 'cashbook' | 'qr'
 const slides = computed<Slide[]>(() => {
   const list: Slide[] = []
   if (props.prayers.length) list.push('prayer')
+  if (props.duty?.columns.length) list.push('duty')
   if (props.cashbook) list.push('cashbook')
   list.push('qr')
   return list
@@ -53,6 +63,13 @@ watch(() => slides.value.length, (len) => {
         :aria-hidden="activeIndex !== i"
       >
         <PrayerSchedule v-if="name === 'prayer'" :prayers="prayers" />
+        <DutySlide
+          v-else-if="name === 'duty' && duty"
+          :title="duty.title"
+          :date-label="duty.dateLabel"
+          :columns="duty.columns"
+          :topic="duty.topic"
+        />
         <CashbookSlide
           v-else-if="name === 'cashbook' && cashbook"
           :total-balance="cashbook.totalBalance"

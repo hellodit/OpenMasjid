@@ -15,13 +15,21 @@ describe('tenantSlug', () => {
 
   it('onboarding requires an 8+ char password', () => {
     const base = {
-      mosque: { name: 'Masjid Uji', slug: 'masjid-uji', city: '', timezone: 'Asia/Jakarta' },
+      mosque: { name: 'Masjid Uji', slug: '' },
       owner: { name: 'Owner', email: 'OWNER@Example.com', password: 'short' },
     }
     expect(onboardingSchema.safeParse(base).success).toBe(false)
     const ok = onboardingSchema.parse({ ...base, owner: { ...base.owner, password: 'password123' } })
     expect(ok.owner.email).toBe('owner@example.com')
-    expect(ok.mosque.city).toBeNull()
+    expect(ok.mosque.slug).toBeUndefined() // empty slug → generated server-side
+  })
+
+  it('onboarding needs only mosque name + owner account', () => {
+    const ok = onboardingSchema.safeParse({
+      mosque: { name: 'Masjid Al-Ikhlas' },
+      owner: { name: 'Fulan', email: 'fulan@example.com', password: 'password123' },
+    })
+    expect(ok.success).toBe(true)
   })
 })
 
