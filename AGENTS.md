@@ -27,6 +27,47 @@ supaya `nuxi typecheck` berjalan — TypeScript 6/7 belum didukung vue-tsc.
 
 ---
 
+## 1a. Multi-tenancy (WAJIB dibaca)
+
+OpenMasjid melayani **banyak masjid (tenant)** dari satu deployment dan satu database
+(shared schema + kolom `tenant_id` + Row Level Security). Desain lengkap:
+[docs/multi-tenant-architecture.md](docs/multi-tenant-architecture.md).
+
+- **Routing berbasis path.** Halaman masjid: `/<slug>/…` (`app/pages/[tenant]/**`). API masjid:
+  `/api/t/<slug>/…` (`server/api/t/[tenant]/**`). Global: `/` (landing + direktori), `/daftar`
+  (onboarding), `/api/tenants`, `/api/onboarding`, `/api/health`.
+- **Tenant hanya dari URL.** `server/middleware/00.tenant.ts` me-resolve slug → `event.context.tenant`
+  (cache 60 detik, `invalidateTenant(slug)` setelah ubah nama/zona waktu). JANGAN pernah menerima
+  `tenantId` dari body/query.
+- **Setiap handler tenant memakai `defineTenantHandler(access, (event, { tenant, user, db }) => …)`**
+  (`server/utils/auth.ts`) dengan `access` = `public` | `staff` (admin+viewer, baca) | `admin` (tulis) |
+  `owner` (pemilik masjid: kelola pengurus). Badan handler berjalan di dalam `withTenant()` —
+  transaksi yang mengeset `app.tenant_id`. **Gunakan `db` dari context, bukan `db` global.**
+- **RLS** aktif + `FORCE` di semua tabel data masjid (policy `<table>_tenant_isolation`, fail-closed:
+  tanpa `app.tenant_id` → 0 baris). Kolom `tenant_id` default ke `app.tenant_id`, jadi insert di dalam
+  `withTenant` otomatis terlabel. App wajib konek dengan role `openmasjid_app`
+  (`server/db/sql/0001_app_role.sql`) — superuser/BYPASSRLS melewati RLS.
+- **Pengecualian RLS:** tabel auth (`users`, `sessions`, `accounts`, `verifications`) dan `tenants`
+  tidak memakai RLS (Better Auth mengaksesnya di luar transaksi tenant). Query ke `users` di handler
+  **wajib** filter `eq(users.tenantId, tenant.id)` atau lewat join dari tabel yang ter-RLS.
+- **Composite FK** `(tenant_id, x_id) → parent(tenant_id, id)` untuk semua relasi antar tabel tenant
+  (pengecekan FK di Postgres tidak tunduk pada RLS). Tabel induk punya `unique(tenant_id, id)`.
+  Tabel tenant baru: `tenantId: tenantIdColumn()`, `tenantIsolationPolicy('<table>', t.tenantId)`,
+  composite FK, unique per tenant, index diawali `tenant_id`, lalu tambahkan ke
+  `0007_tenants_force_rls`-style migrasi custom untuk `FORCE ROW LEVEL SECURITY`.
+- **Akun per masjid.** Email unik per `(tenant_id, lower(email))`. Tiap masjid punya instance Better Auth
+  sendiri (`getTenantAuth(tenant)`: basePath `/api/t/<slug>/auth`, cookie prefix `om_<slug>`, adapter
+  yang men-scope model `user` ke tenant). `getAuthUser()` menolak sesi yang user-nya beda tenant.
+- **Peran:** `admin`, `viewer`, `jamaah`; **pemilik** = `tenants.owner_user_id` (seorang admin).
+  Pengurus baru masuk lewat undangan (`tenant_invitations`, token sekali pakai, hash sha256).
+- **Frontend:** `useApiBase()` → `` `/api/t/${slug}` `` (tipe template literal agar `useFetch` tetap
+  ter-infer), `useTenantPath()` → `tp('/admin/…')`, `useTenantContext()` (tenant + user dari
+  `/api/t/<slug>/context`, tanpa token sesi), `getAuthClient(slug)`.
+- **Uji isolasi:** `bun run test:isolation` (server harus jalan). Wajib hijau sebelum merge perubahan
+  yang menyentuh API/skema tenant; tambahkan kasus baru untuk endpoint baru.
+
+---
+
 ## 2. Struktur direktori
 
 ```
@@ -36,25 +77,31 @@ app/                      # Frontend (Vue)
   assets/css/main.css     # Tailwind v4 + Nuxt UI + @theme token (cms-*, tv-*, masjid-*, gilt-*)
   assets/css/admin.css    # Pola/ornamen CMS (cms-pattern-*, cms-banner-<slug>, cms-eyebrow…)
   assets/css/display.css  # Ornamen layar TV
-  middleware/auth.global.ts  # Guard /admin/** (role admin|viewer)
-  composables/useAuth.ts  # Session, signIn, signOut, isAdmin, isStaff
-  utils/auth-client.ts    # Better Auth client (better-auth/vue)
+  middleware/auth.global.ts  # 404 masjid tak dikenal; guard /[tenant]/admin/** (admin|viewer), team (owner)
+  composables/useTenant.ts   # useTenantSlug, useApiBase, useTenantPath, useTenantContext
+  composables/useAuth.ts  # user, isStaff, isAdmin, isOwner, signIn, signOut (per masjid)
+  utils/auth-client.ts    # getAuthClient(slug) — Better Auth client per masjid
   utils/format.ts         # formatRupiah, formatDate, initials, timeAgo, … (auto-import)
-  pages/                  # / (portal), /display (TV), /transparency, /auth/*, /admin/*
+  pages/index.vue, daftar.vue  # landing + direktori, onboarding masjid baru
+  pages/[tenant]/          # portal, display (TV), transparency, auth/*, admin/** per masjid
   components/admin|display/
 server/
-  api/auth/[...all].ts    # Better Auth handler
-  api/public/**           # Endpoint publik (tanpa login)
-  api/admin/**            # Endpoint CMS (wajib requireStaff/requireAdmin)
+  middleware/00.tenant.ts # /api/t/<slug>/… → event.context.tenant
+  api/tenants.get.ts, api/onboarding/**   # global
+  api/t/[tenant]/auth/[...all].ts         # Better Auth per masjid
+  api/t/[tenant]/public/**                # publik (defineTenantHandler('public'))
+  api/t/[tenant]/admin/**                 # CMS (staff/admin/owner)
   db/schema/*.ts          # Tabel Drizzle (+ relations.ts, _enums.ts, _columns.ts)
   db/migrations/          # SQL hasil drizzle-kit (JANGAN diedit manual setelah di-commit)
-  utils/                  # auto-import Nitro: db, auth, validate, balance, period, mosque, events, cashbook
+  utils/                  # auto-import Nitro: db (withTenant), auth (getTenantAuth, defineTenantHandler),
+                          # tenant, tenant-provisioning, team, rate-limit, validate, balance, period,
+                          # mosque, events, cashbook — util data menerima `db` (tx tenant) sebagai argumen pertama
 shared/                   # Dipakai app & server (import: #shared/...)
-  schemas/*.ts            # Zod: common, auth, cashbook, events, mosque
+  schemas/*.ts            # Zod: common, auth, cashbook, events, mosque, tenants
   utils/prayer.ts         # adhan → jadwal sholat, label hijriyah
   utils/events.ts         # status turunan event/pendaftar
   types/auth.ts           # UserRole, STAFF_ROLES
-scripts/                  # seed, seed-cashbook-fake, seed-events-fake, health-check, scheduler
+scripts/                  # seed, seed-*-fake (SEED_TENANT_SLUG), test-isolation, health-check, scheduler
 ```
 
 ---
@@ -66,13 +113,16 @@ scripts/                  # seed, seed-cashbook-fake, seed-events-fake, health-c
   1. Ubah file skema.
   2. `bun run db:generate --name <deskripsi_singkat>` → SQL baru di `server/db/migrations/`.
   3. **Review SQL-nya** (perhatikan prompt rename, DROP, perubahan index).
-  4. `bun run db:migrate` (pakai `DATABASE_DIRECT_URL`).
+  4. `bun run db:migrate` (pakai `DATABASE_DIRECT_URL`, role owner).
+  drizzle-kit tidak selalu mengurutkan constraint dengan benar (mis. composite FK sebelum
+  `UNIQUE(tenant_id, id)` yang dirujuknya) — urutkan ulang SQL **sebelum** di-commit.
+  Migrasi data/backfill: `drizzle-kit generate --custom --name …` (lihat `0004_tenants_backfill.sql`).
   Jangan pakai `db:push` untuk database bersama/produksi.
 - Konvensi tabel:
   - PK `uuid` `defaultRandom()`.
   - Soft delete: spread `...timestamps` dari `_columns.ts` (`created_at`, `updated_at` auto `$onUpdate`, `deleted_at`).
     Semua query baca **wajib** memfilter `isNull(table.deletedAt)`.
-  - Audit: `created_by` / `updated_by` → `users.id` (`onDelete: 'set null'`), isi dari `requireAdmin()`.
+  - Audit: `created_by` / `updated_by` → `users.id` (`onDelete: 'set null'`), isi dari `user.id` di `defineTenantHandler('admin', …)`.
   - Unique yang menghormati soft delete pakai **partial unique index** `.where(sql\`deleted_at IS NULL\`)`;
     `onConflictDoNothing` untuk index ini wajib menyertakan `where` yang sama.
   - Uang: `numeric(14,2)` sebagai **string**. Jumlahkan dengan `sumMoney`/`subMoney` (`server/utils/balance.ts`), bukan float.
@@ -83,8 +133,9 @@ scripts/                  # seed, seed-cashbook-fake, seed-events-fake, health-c
   subquery berkorelasi, referensi ke baris luar harus pakai identifier lengkap
   (`sql.raw('"cash_accounts"."id"')`) — lihat `balanceExpr`. Bug ini dulu membuat saldo tidak pernah
   menghitung transaksi.
-- `mosque_profile` adalah singleton (`MOSQUE_PROFILE_SINGLETON_ID`), juga menyimpan pengaturan jadwal sholat
-  (`prayer_method`, `asr_madhab`, `prayer_adjustments`, `iqamah_offsets`).
+- `mosque_profile`: satu baris per tenant (unique `tenant_id`), juga menyimpan pengaturan jadwal sholat
+  (`prayer_method`, `asr_madhab`, `prayer_adjustments`, `iqamah_offsets`). Nama masjid disinkronkan
+  ke `tenants.name` (direktori).
 
 ---
 
@@ -103,22 +154,22 @@ scripts/                  # seed, seed-cashbook-fake, seed-events-fake, health-c
 
 ## 5. Auth & otorisasi (Better Auth)
 
-- Instance: `server/utils/auth.ts` (`auth`). Membaca env `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`
-  langsung dari `process.env` supaya juga jalan di script CLI.
-- Model `user` = tabel `users` (field `name` dipetakan ke `fullName`); tabel `sessions`, `accounts`,
-  `verifications`. ID uuid (`advanced.database.generateId: 'uuid'`).
-- Field tambahan: `role` (`admin|viewer|jamaah`, `input: false` — user tidak bisa set sendiri),
-  `phone`, `isActive`. Hook `session.create.before` menolak user nonaktif/terhapus.
-- Server guard (wajib di setiap handler `server/api/admin/**`):
-  - `requireStaff(event)` → baca (admin + viewer)
-  - `requireAdmin(event)` → tulis (admin saja)
-  - `requireAuth(event, roles?)` / `getAuthUser(event)` untuk kasus lain.
-  Role dibaca ulang dari DB per request (cookie cache bisa basi).
-- Client: `useAuth()`; middleware global melindungi `/admin/**` dan memaksa role admin/viewer.
-  Sembunyikan aksi tulis dari viewer (`isAdmin`), tapi keamanan tetap di server.
-- Reset password: `sendResetPassword` saat ini hanya `console.info` URL-nya (**TODO: mailer**).
-- Admin pertama dibuat oleh `bun run db:seed` dari `SEED_ADMIN_EMAIL/PASSWORD/NAME`.
-- Tidak ada lagi `DEV_BYPASS_AUTH`. Jangan menambah bypass auth.
+- Instance **per masjid**: `getTenantAuth(tenant)` di `server/utils/auth.ts` (lihat §1a). Membaca env
+  `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` langsung dari `process.env` supaya juga jalan di script CLI.
+- Model `user` = tabel `users` (field `name` → `fullName`); tabel `sessions`, `accounts`,
+  `verifications`. ID uuid (`advanced.database.generateId: 'uuid'`). Field tambahan: `tenantId`
+  (diisi adapter), `role` (`input: false`), `phone`, `isActive`. Hook `session.create.before` menolak
+  user nonaktif/terhapus/beda tenant.
+- Server guard: `defineTenantHandler('staff' | 'admin' | 'owner' | 'public', …)`. Role & status
+  dibaca ulang dari DB per request (cookie cache bisa basi). Menonaktifkan pengurus menghapus sesinya.
+- Client: `useAuth()` / `useTenantContext()`; middleware global melindungi `/[tenant]/admin/**`.
+  Sembunyikan aksi tulis dari viewer (`isAdmin`) dan menu pengurus dari non-owner (`isOwner`),
+  tapi keamanan tetap di server.
+- Masjid baru + pemiliknya: `POST /api/onboarding` (UI `/daftar`), memakai `provisionTenant()` +
+  `createStaffUser()` (`server/utils/tenant-provisioning.ts`). Seed lokal: `bun run db:seed`.
+- Reset password & undangan: belum ada mailer — tautan di-log di server dan undangan ditampilkan
+  sekali ke pemilik (**TODO: mailer**). Endpoint di luar Better Auth memakai `rateLimit()`.
+- Tidak ada bypass auth. Jangan menambahkannya.
 
 ---
 
@@ -131,10 +182,12 @@ scripts/                  # seed, seed-cashbook-fake, seed-events-fake, health-c
   - Edit transaksi lama tetap boleh walau akun/kategorinya sudah diarsipkan; validasi "aktif" hanya
     untuk referensi yang **diubah**. Tipe transaksi tidak bisa diubah.
   - Bentuk transfer vs income/expense juga dijaga oleh CHECK `transactions_transfer_shape`.
-  - Periode laporan ("hari ini/bulan ini") dihitung di **timezone masjid** (`getMosqueTimezone()`), bukan UTC.
+  - Periode laporan ("hari ini/bulan ini") dihitung di **timezone masjid** (`tenant.timezone`), bukan UTC.
   - Export CSV menetralkan formula injection.
 - **Kegiatan**: status tersimpan hanya `draft|published|archived`; `ongoing` & `full` diturunkan
   (`deriveEventStatus`). PUT event mengganti seluruh data termasuk speakers & agenda dalam satu transaksi.
+- **Isolasi**: data satu masjid tidak boleh terlihat/terubah/terujuk oleh masjid lain — termasuk lewat id
+  dari URL/body. Akses id milik masjid lain harus menghasilkan 404 (bukan 403).
 - **Pendaftar**: status turunan `confirmed|attended|cancelled` dari `attended_at`/`cancelled_at`.
 - **Jadwal sholat**: `computePrayerTimes(date, settings)`; metode `kemenag` = sudut 20°/18° + ihtiyat 2 menit.
   Tanggal selalu tanggal lokal masjid.
@@ -165,20 +218,25 @@ bun run build
 
 bun run db:generate --name x   # buat migrasi dari perubahan skema
 bun run db:migrate             # terapkan migrasi
-bun run db:seed                # kategori, profil masjid, kategori kas, admin pertama
+bun run db:seed                # satu masjid (SEED_TENANT_SLUG) + data default + pemilik
+bun run test:isolation         # uji isolasi lintas masjid (butuh server jalan)
 bun run db:seed:cashbook       # transaksi kas palsu (--clean untuk hapus)
 bun run db:seed:events         # kegiatan + jamaah + pendaftar palsu (--clean untuk hapus)
 bun run db:studio
 ```
 
-Postgres lokal cukup: `DATABASE_URL` dan `DATABASE_DIRECT_URL` boleh sama (lihat `.env.example`).
+Postgres lokal: jalankan `server/db/sql/0001_app_role.sql` sekali, lalu `DATABASE_URL` memakai role
+`openmasjid_app` dan `DATABASE_DIRECT_URL` memakai role owner (lihat `.env.example`).
 
 ---
 
 ## 9. Checklist sebelum commit
 
 - [ ] `bun run lint` dan `bun run typecheck` bersih.
-- [ ] Endpoint admin baru memanggil `requireStaff`/`requireAdmin`.
+- [ ] Endpoint tenant baru memakai `defineTenantHandler` dengan level akses yang tepat dan `db` dari context.
+- [ ] Tabel tenant baru: `tenant_id`, policy RLS + FORCE, composite FK, unique per tenant.
+- [ ] Query ke `users` difilter `tenant_id`.
+- [ ] `bun run test:isolation` hijau (tambahkan kasus untuk endpoint baru).
 - [ ] Input divalidasi skema Zod dari `shared/schemas`.
 - [ ] Query baca memfilter `deleted_at IS NULL`.
 - [ ] Perubahan skema disertai migrasi hasil `db:generate` yang sudah direview.

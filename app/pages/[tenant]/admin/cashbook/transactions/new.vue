@@ -7,6 +7,7 @@ import {
   type TxType,
 } from '~/composables/useCashbook'
 import type { TransactionFormOutput } from '~/components/admin/cashbook/TransactionForm.vue'
+const tp = useTenantPath()
 
 definePageMeta({ layout: 'admin' })
 useHead({ title: 'Transaksi Baru — Buku Kas' })
@@ -31,7 +32,7 @@ async function onSubmit(payload: TransactionFormOutput) {
   try {
     const row = await api.createTransaction(payload)
     toast.add({ color: 'success', title: 'Transaksi tersimpan', icon: 'i-lucide-check-circle' })
-    await router.push(row?.id ? `/admin/cashbook/transactions/${row.id}` : '/admin/cashbook/transactions')
+    await router.push(tp(row?.id ? `/admin/cashbook/transactions/${row.id}` : '/admin/cashbook/transactions'))
   } catch (e) {
     toast.add({ color: 'error', title: 'Gagal menyimpan transaksi', description: apiErrorMessage(e, 'Terjadi kesalahan') })
   } finally {
@@ -48,7 +49,7 @@ async function onSubmit(payload: TransactionFormOutput) {
       description="Catat pemasukan, pengeluaran, atau transfer antar akun kas."
     >
       <template #actions>
-        <UButton color="neutral" variant="ghost" icon="i-lucide-arrow-left" to="/admin/cashbook/transactions" label="Kembali" />
+        <UButton color="neutral" variant="ghost" icon="i-lucide-arrow-left" :to="tp('/admin/cashbook/transactions')" label="Kembali" />
       </template>
     </AdminPageHeader>
 
@@ -69,7 +70,7 @@ async function onSubmit(payload: TransactionFormOutput) {
         :submitting="submitting"
         submit-label="Simpan Transaksi"
         @submit="onSubmit"
-        @cancel="router.push('/admin/cashbook/transactions')"
+        @cancel="router.push(tp('/admin/cashbook/transactions'))"
       />
     </div>
   </div>

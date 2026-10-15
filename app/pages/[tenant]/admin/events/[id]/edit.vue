@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { eventToFormState } from '~/components/admin/form/EventForm.vue'
+const api = useApiBase()
+const tp = useTenantPath()
 
 definePageMeta({ layout: 'admin' })
 
@@ -7,7 +9,7 @@ const route = useRoute()
 const { isAdmin } = useAuth()
 const id = computed(() => String(route.params.id))
 
-const { data: ev, error } = await useFetch(() => `/api/admin/events/${id.value}`)
+const { data: ev, error } = await useFetch(() => `${api}/admin/events/${id.value}`)
 if (error.value?.statusCode === 404 || error.value?.statusCode === 400)
   throw createError({ statusCode: 404, statusMessage: 'Kegiatan tidak ditemukan', fatal: true })
 const errorMessage = computed(() => (error.value?.data as { statusMessage?: string } | undefined)?.statusMessage ?? error.value?.message)
@@ -24,7 +26,7 @@ useHead({ title: () => `Edit ${ev.value?.title ?? 'Kegiatan'} — OpenMasjid CMS
       description="Perbarui informasi kegiatan. Pembicara dan susunan acara akan diganti sesuai isian ini."
     >
       <template #actions>
-        <UButton :to="`/admin/events/${id}`" color="neutral" variant="ghost" icon="i-lucide-arrow-left" class="font-semibold">
+        <UButton :to="tp(`/admin/events/${id}`)" color="neutral" variant="ghost" icon="i-lucide-arrow-left" class="font-semibold">
           Kembali ke Detail
         </UButton>
       </template>

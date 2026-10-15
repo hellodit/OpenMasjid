@@ -2,6 +2,7 @@
 import { firstOfMonthIso, formatDate, formatRupiah, todayIso } from '~/utils/format'
 import type { TabsItem } from '@nuxt/ui'
 import { useCashbookSummary } from '~/composables/useCashbook'
+const api = useApiBase()
 
 definePageMeta({ layout: 'admin' })
 useHead({ title: 'Laporan — Buku Kas' })
@@ -52,7 +53,7 @@ const breakdownQuery = computed(() => ({ ...summaryQuery.value, type: breakdownT
 
 const [{ data: summary }, { data: breakdown, pending: breakdownLoading }] = await Promise.all([
   useCashbookSummary(summaryQuery),
-  useFetch('/api/admin/cashbook/reports/by-category', { query: breakdownQuery, watch: [breakdownQuery] }),
+  useFetch(`${api}/admin/cashbook/reports/by-category`, { query: breakdownQuery, watch: [breakdownQuery] }),
 ])
 
 const rangeLabel = computed(() =>
@@ -62,7 +63,7 @@ const rangeLabel = computed(() =>
 function exportCsv() {
   // Cookie-authenticated GET; the server sets Content-Disposition: attachment.
   const params = new URLSearchParams({ from: range.value.from, to: range.value.to })
-  window.location.href = `/api/admin/cashbook/reports/export?${params}`
+  window.location.href = `${api}/admin/cashbook/reports/export?${params}`
 }
 </script>
 

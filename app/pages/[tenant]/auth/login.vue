@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from '@nuxt/ui'
 import { loginSchema, type LoginInput } from '#shared/schemas/auth'
+const tp = useTenantPath()
 
 definePageMeta({ layout: 'auth' })
 useHead({ title: 'Masuk — OpenMasjid CMS' })
 
 const route = useRoute()
 const { signIn, isStaff } = useAuth()
+const { tenant } = useTenantContext()
 
 const state = reactive<Partial<LoginInput>>({ email: '', password: '', remember: true })
 const showPassword = ref(false)
@@ -22,9 +24,11 @@ async function onSubmit(event: FormSubmitEvent<LoginInput>) {
       error.value = 'Akun Anda bukan pengurus DKM sehingga tidak dapat membuka CMS.'
       return
     }
-    const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/')
+    // Only follow redirects inside this mosque (no open redirect / cross-tenant hop).
+    const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith(`${tp('/')}/`)
+      && !route.query.redirect.startsWith('//')
       ? route.query.redirect
-      : '/admin'
+      : tp('/admin')
     await navigateTo(redirect)
   }
   catch (e) {
@@ -48,7 +52,8 @@ async function onSubmit(event: FormSubmitEvent<LoginInput>) {
       Selamat datang kembali
     </h1>
     <p class="text-sm text-cms-muted m-0 mb-7 max-w-[380px]">
-      Silakan masuk dengan akun pengurus untuk membuka dasbor manajemen masjid.
+      Masuk dengan akun pengurus <span class="font-semibold text-cms-ink-2">{{ tenant?.name }}</span>.
+      Akun berlaku khusus untuk masjid ini.
     </p>
 
     <UForm
@@ -104,7 +109,7 @@ async function onSubmit(event: FormSubmitEvent<LoginInput>) {
       <div class="flex items-center justify-between -mt-1">
         <UCheckbox v-model="state.remember" name="remember" label="Ingat saya" />
         <NuxtLink
-          to="/auth/forgot-password"
+          :to="tp('/auth/forgot-password')"
           class="text-[13px] font-semibold text-cms-green-700 hover:text-cms-green-800"
         >
           Lupa password?

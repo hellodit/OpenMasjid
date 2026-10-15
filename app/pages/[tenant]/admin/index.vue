@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { formatRupiah } from '~/utils/format'
+const api = useApiBase()
+const tp = useTenantPath()
 
 definePageMeta({ layout: 'admin' })
 useHead({ title: 'Dashboard — OpenMasjid CMS' })
@@ -7,10 +9,10 @@ useHead({ title: 'Dashboard — OpenMasjid CMS' })
 const { user } = useAuth()
 
 const [{ data, error }, { data: prayer }, { data: mosque }, { data: cash }] = await Promise.all([
-  useFetch('/api/admin/dashboard'),
-  useFetch('/api/public/prayer-times'),
-  useFetch('/api/public/mosque'),
-  useFetch('/api/admin/cashbook/reports/summary', { query: { period: 'month' } }),
+  useFetch(`${api}/admin/dashboard`),
+  useFetch(`${api}/public/prayer-times`),
+  useFetch(`${api}/public/mosque`),
+  useFetch(`${api}/admin/cashbook/reports/summary`, { query: { period: 'month' } }),
 ])
 
 const errorMessage = computed(() => (error.value?.data as { statusMessage?: string } | undefined)?.statusMessage ?? error.value?.message)
@@ -84,7 +86,7 @@ const description = computed(() => {
           subtitle="Kegiatan tayang yang berlangsung hari ini."
         >
           <template #head>
-            <AdminBtn size="sm" to="/admin/events">Lihat semua →</AdminBtn>
+            <AdminBtn size="sm" :to="tp('/admin/events')">Lihat semua →</AdminBtn>
           </template>
           <div v-if="todayEvents.length" class="flex flex-col gap-2.5">
             <AdminDashboardTodayItem v-for="ev in todayEvents" :key="ev.id" :ev="ev" />
@@ -99,7 +101,7 @@ const description = computed(() => {
           subtitle="Kegiatan tayang berikutnya."
         >
           <template #head>
-            <AdminBtn size="sm" to="/admin/events?status=upcoming">Lihat semua →</AdminBtn>
+            <AdminBtn size="sm" :to="tp('/admin/events?status=upcoming')">Lihat semua →</AdminBtn>
           </template>
           <div v-if="upcomingEvents.length" class="flex flex-col gap-2.5">
             <AdminDashboardTodayItem v-for="ev in upcomingEvents" :key="ev.id" :ev="ev" show-date />
@@ -132,7 +134,7 @@ const description = computed(() => {
 
         <AdminPanel v-if="cash" title="Kas Masjid" subtitle="Ringkasan bulan ini">
           <template #head>
-            <AdminBtn size="sm" to="/admin/cashbook">Buka →</AdminBtn>
+            <AdminBtn size="sm" :to="tp('/admin/cashbook')">Buka →</AdminBtn>
           </template>
           <div class="bg-cms-surface-2 border border-cms-border rounded-cms px-4 py-3.5 mb-2.5">
             <div class="text-[11px] text-cms-muted uppercase tracking-[0.4px] font-semibold">Total Saldo</div>
@@ -158,7 +160,7 @@ const description = computed(() => {
 
         <AdminPanel title="Pendaftaran Terkini" subtitle="Aktivitas jamaah terbaru">
           <template #head>
-            <AdminBtn size="sm" to="/admin/registrants">Semua →</AdminBtn>
+            <AdminBtn size="sm" :to="tp('/admin/registrants')">Semua →</AdminBtn>
           </template>
           <AdminDashboardActivityFeed :items="data?.recentRegistrations ?? []" />
         </AdminPanel>

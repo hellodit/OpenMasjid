@@ -35,13 +35,14 @@ function formatCountdown(ms: number): string {
  * Refetches when the mosque-local date rolls over.
  */
 export function usePrayerSchedule(now: Ref<Date>) {
+  const api = useApiBase()
   const requestedDate = ref<string>()
 
   const { data, pending, error, refresh } = useAsyncData('public-prayer-schedule', async () => {
-    const today = await $fetch('/api/public/prayer-times', {
+    const today = await $fetch(`${api}/public/prayer-times`, {
       query: requestedDate.value ? { date: requestedDate.value } : {},
     })
-    const tomorrow = await $fetch('/api/public/prayer-times', {
+    const tomorrow = await $fetch(`${api}/public/prayer-times`, {
       query: { date: addDays(today.date, 1) },
     }).catch(() => null)
     return { today, tomorrow }

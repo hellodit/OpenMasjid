@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const tp = useTenantPath()
 definePageMeta({ layout: 'admin' })
 useHead({ title: 'Tambah Kegiatan — OpenMasjid CMS' })
 
@@ -13,7 +14,7 @@ const { isAdmin } = useAuth()
       description="Lengkapi informasi kegiatan agar jamaah dapat mengetahui dan mendaftar dengan mudah."
     >
       <template #actions>
-        <UButton to="/admin/events" color="neutral" variant="ghost" icon="i-lucide-arrow-left" class="font-semibold">
+        <UButton :to="tp('/admin/events')" color="neutral" variant="ghost" icon="i-lucide-arrow-left" class="font-semibold">
           Kembali ke Daftar
         </UButton>
       </template>

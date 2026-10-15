@@ -3,6 +3,7 @@ import type { FormSubmitEvent } from '@nuxt/ui'
 import type { z } from 'zod'
 import { mosqueSettingsSchema, type MosqueSettingsInput } from '#shared/schemas/mosque'
 import type { PrayerTime } from '#shared/utils/prayer'
+const api = useApiBase()
 
 definePageMeta({ layout: 'admin' })
 useHead({ title: 'Pengaturan — OpenMasjid CMS' })
@@ -10,7 +11,7 @@ useHead({ title: 'Pengaturan — OpenMasjid CMS' })
 const toast = useToast()
 const { isAdmin } = useAuth()
 
-const { data: profile, error } = await useFetch('/api/admin/settings/mosque')
+const { data: profile, error } = await useFetch(`${api}/admin/settings/mosque`)
 
 type Profile = NonNullable<typeof profile.value>
 
@@ -64,7 +65,7 @@ const saving = ref(false)
 async function onSubmit(event: FormSubmitEvent<z.output<typeof mosqueSettingsSchema>>) {
   saving.value = true
   try {
-    const row = await $fetch('/api/admin/settings/mosque', { method: 'PUT', body: event.data })
+    const row = await $fetch(`${api}/admin/settings/mosque`, { method: 'PUT', body: event.data })
     if (!row) throw new Error('Respons kosong')
     const next = toState({
       ...row,
@@ -115,7 +116,7 @@ async function loadPreview() {
   const seq = ++previewSeq
   previewLoading.value = true
   try {
-    const res = await $fetch('/api/admin/settings/prayer-preview', { method: 'POST', body: { settings } })
+    const res = await $fetch(`${api}/admin/settings/prayer-preview`, { method: 'POST', body: { settings } })
     if (seq === previewSeq) preview.value = res
   }
   catch {

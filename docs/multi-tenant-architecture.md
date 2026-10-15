@@ -1,8 +1,45 @@
-# Desain Arsitektur Multi-Tenant — OpenMasjid
+# Arsitektur Multi-Tenant — OpenMasjid
 
-> Status: **usulan desain**, belum diimplementasikan. Basis: stack saat ini (Nuxt 4, Nuxt UI, Drizzle,
-> Zod, Better Auth, PostgreSQL). Dokumen ini menjelaskan cara mengubah OpenMasjid dari satu masjid per
-> deployment menjadi satu platform untuk banyak masjid (SaaS).
+> **Status: fase 0–5 sudah diimplementasikan** (skema + backfill, scoping API, RLS, uji isolasi,
+> onboarding, undangan pengurus). Fase 6 (console platform, paket & billing) belum.
+> Bagian "Keputusan" di bawah adalah sumber kebenaran; bagian setelahnya adalah rancangan awal yang
+> sudah disesuaikan dengan keputusan tersebut. Ringkasan praktis untuk kontributor ada di
+> [AGENTS.md §1a](../AGENTS.md).
+
+## 0. Keputusan (Oktober 2026)
+
+| Topik | Keputusan | Implikasi |
+|---|---|---|
+| Alamat masjid | **Path**: `openmasjid.id/<slug>/…`, API `/api/t/<slug>/…` | Tanpa wildcard DNS/SSL. Slug dicek terhadap daftar `RESERVED_TENANT_SLUGS`. Domain kustom belum didukung. |
+| Peran | **3 peran**: `admin`, `viewer` (+ `jamaah` non-CMS). **Pemilik** = `tenants.owner_user_id` | Tidak perlu enum baru; pemilik adalah admin dengan hak kelola pengurus. |
+| Akun jamaah/pengurus | **Akun per masjid** | `users.tenant_id NOT NULL`, email unik per tenant. Satu instance Better Auth per masjid (basePath + cookie prefix sendiri). Tidak ada switcher masjid; berpindah masjid = login di masjid itu. |
+| Cakupan | Fase 0–5 | Lihat §11. |
+
+### Yang berbeda dari rancangan awal
+- Tidak memakai plugin `organization` Better Auth (karena akun per masjid, bukan keanggotaan global).
+  Isolasi akun dicapai dengan adapter Better Auth yang men-scope semua query model `user` ke
+  `tenant_id` + cookie per masjid + pengecekan tenant di `getAuthUser()`.
+- **Tabel auth tanpa RLS** (`users`, `sessions`, `accounts`, `verifications`) karena Better Auth
+  mengaksesnya di luar transaksi tenant. Ditutup oleh: adapter ter-scope, composite FK
+  `registrants(tenant_id, user_id) → users(tenant_id, id)`, dan aturan "query `users` wajib filter
+  `tenant_id`".
+- `tenant_members` tidak ada; peran disimpan di `users.role`. Undangan di `tenant_invitations`.
+- Kolom `tenant_id` memakai `DEFAULT current_setting('app.tenant_id')::uuid` sehingga insert di dalam
+  `withTenant()` otomatis terlabel.
+
+### Peta implementasi
+| Komponen | Lokasi |
+|---|---|
+| Skema tenant, helper kolom & policy | `server/db/schema/tenants.ts` (`tenantIdColumn`, `tenantIsolationPolicy`) |
+| Migrasi | `0003_tenants_expand` → `0004_tenants_backfill` (custom) → `0005_tenants_contract` → `0006_tenants_rls` → `0007_tenants_force_rls` (custom) |
+| Role DB aplikasi | `server/db/sql/0001_app_role.sql` (`openmasjid_app`, NOBYPASSRLS) |
+| Resolusi tenant | `server/middleware/00.tenant.ts`, `server/utils/tenant.ts` |
+| Transaksi tenant | `withTenant()` di `server/utils/db.ts` |
+| Auth per masjid & guard | `server/utils/auth.ts` (`getTenantAuth`, `defineTenantHandler`) |
+| Onboarding & provisioning | `server/api/onboarding/**`, `server/utils/tenant-provisioning.ts` |
+| Pengurus & undangan | `server/api/t/[tenant]/admin/team/**`, `server/api/t/[tenant]/public/invitations/**` |
+| Frontend | `app/pages/[tenant]/**`, `app/composables/useTenant.ts`, `app/middleware/auth.global.ts` |
+| Uji isolasi | `scripts/test-isolation.ts` (`bun run test:isolation`) |
 
 ---
 
@@ -153,7 +190,11 @@ Kolom yang merujuk `users` (`created_by`, `registrants.user_id`) tetap FK biasa,
 
 ---
 
-## 5. Resolusi tenant (Host → tenant)
+## 5. Resolusi tenant (rancangan awal: Host → tenant)
+
+> **Diimplementasikan berbasis path** (§0): `/api/t/<slug>/…` di-resolve oleh
+> `server/middleware/00.tenant.ts`; halaman `/<slug>/…` memakai param `[tenant]`. Uraian Host di bawah
+> tetap berlaku jika kelak pindah ke subdomain.
 
 ```
 alhikmah.openmasjid.id            → tenants.slug = 'alhikmah'
@@ -177,7 +218,10 @@ menyimpannya di `useState('tenant')` agar composable seperti `useTenant()` bisa 
 
 ---
 
-## 6. Auth & otorisasi (Better Auth)
+## 6. Auth & otorisasi (rancangan awal)
+
+> **Diimplementasikan berbeda** (§0): akun per masjid, instance Better Auth per masjid, peran
+> `admin`/`viewer` + pemilik via `tenants.owner_user_id`, guard `defineTenantHandler`.
 
 ### 6.1 Plugin
 - `organization()` dipakai sebagai tenant. Tabelnya dipetakan ke `tenants`, `tenant_members`, dan
@@ -353,7 +397,9 @@ backfill tetap bekerja di domain lama, yang dipetakan lewat `tenant_domains`.
 
 ---
 
-## 13. Keputusan yang perlu dikonfirmasi
+## 13. Keputusan yang perlu dikonfirmasi (rancangan awal)
+
+> Butir 1–3 sudah diputuskan (lihat §0). Butir 4–7 masih terbuka.
 
 1. **Domain**: nama domain platform (`openmasjid.id`?), dan apakah domain kustom masuk tahap awal.
 2. **Peran**: apakah set `owner/admin/bendahara/editor/viewer` sudah sesuai struktur DKM?

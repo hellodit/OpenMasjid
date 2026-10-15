@@ -221,6 +221,15 @@ async function main() {
       return tx`insert into categories (tenant_id, slug, name) values (${bId}, ${`x-${suffix}`}, 'x')`.then(() => 'inserted', (e: Error) => e.message)
     }).catch((e: Error) => e.message)
     check('RLS: cannot insert rows for another tenant', String(insert).includes('row-level security'), String(insert))
+    // Composite FK: even inside tenant A, a row may not reference B's account.
+    const fk = await sql.begin(async (tx) => {
+      await tx`select set_config('app.tenant_id', ${aId}, true)`
+      const [owner] = await tx`select created_by from transactions limit 1`
+      return tx`insert into transactions (type, transaction_date, account_id, category_id, amount, description, created_by)
+                values ('income', '2099-01-03', ${B.accountId}, ${A.cashCategoryId}, 1, 'fk', ${owner!.created_by})`
+        .then(() => 'inserted', (e: Error) => e.message)
+    }).catch((e: Error) => e.message)
+    check('DB: composite FK rejects referencing another tenant\'s account', String(fk).includes('foreign key'), String(fk))
     const role = await sql`select rolsuper, rolbypassrls from pg_roles where rolname = current_user`
     check('app DB role is not superuser / BYPASSRLS', !role[0]!.rolsuper && !role[0]!.rolbypassrls)
     await sql.end()

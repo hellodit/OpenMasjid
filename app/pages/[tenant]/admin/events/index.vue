@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { EventStatusFilter } from '~/components/admin/list/Toolbar.vue'
+const api = useApiBase()
+const tp = useTenantPath()
 
 definePageMeta({ layout: 'admin' })
 useHead({ title: 'Daftar Kegiatan — OpenMasjid CMS' })
@@ -22,9 +24,9 @@ watch(query, (v) => {
 })
 watch([status, categoryId, q], () => { page.value = 1 })
 
-const { data: categories } = await useFetch('/api/admin/categories', { key: 'admin-event-categories', default: () => [] })
+const { data: categories } = await useFetch(`${api}/admin/categories`, { key: 'admin-event-categories', default: () => [] })
 
-const { data, status: fetchStatus, error } = await useFetch('/api/admin/events', {
+const { data, status: fetchStatus, error } = await useFetch(`${api}/admin/events`, {
   query: computed(() => ({
     q: q.value || undefined,
     categoryId: categoryId.value === 'all' ? undefined : categoryId.value,
@@ -38,7 +40,7 @@ const errorMessage = computed(() => (error.value?.data as { statusMessage?: stri
 const events = computed(() => data.value?.data ?? [])
 const pagination = computed(() => data.value?.pagination)
 
-const openDetail = (id: string) => navigateTo(`/admin/events/${id}`)
+const openDetail = (id: string) => navigateTo(tp(`/admin/events/${id}`))
 </script>
 
 <template>
@@ -49,7 +51,7 @@ const openDetail = (id: string) => navigateTo(`/admin/events/${id}`)
       description="Kelola seluruh kajian, kelas, dan kegiatan sosial yang diselenggarakan oleh DKM."
     >
       <template #actions>
-        <UButton v-if="isAdmin" to="/admin/events/new" icon="i-lucide-plus" class="font-semibold">
+        <UButton v-if="isAdmin" :to="tp('/admin/events/new')" icon="i-lucide-plus" class="font-semibold">
           Tambah Kegiatan
         </UButton>
       </template>
@@ -87,7 +89,7 @@ const openDetail = (id: string) => navigateTo(`/admin/events/${id}`)
         <NuxtLink
           v-for="ev in events"
           :key="ev.id"
-          :to="`/admin/events/${ev.id}`"
+          :to="tp(`/admin/events/${ev.id}`)"
         >
           <AdminListEventCard :ev="ev" />
         </NuxtLink>

@@ -7,6 +7,8 @@ import {
   useTransactionCategories,
 } from '~/composables/useCashbook'
 import type { TransactionFormOutput } from '~/components/admin/cashbook/TransactionForm.vue'
+const api = useApiBase()
+const tp = useTenantPath()
 
 definePageMeta({ layout: 'admin' })
 useHead({ title: 'Detail Transaksi — Buku Kas' })
@@ -17,12 +19,12 @@ const toast = useToast()
 const { isAdmin } = useAuth()
 const id = route.params.id as string
 
-const { data: txDetail, refresh, error: loadError } = await useFetch(`/api/admin/cashbook/transactions/${id}`)
+const { data: txDetail, refresh, error: loadError } = await useFetch(`${api}/admin/cashbook/transactions/${id}`)
 
 // Archived accounts/categories are included so an old transaction still shows its current values.
 const { data: accounts } = await useCashAccounts({ includeArchived: true })
 const { data: categories } = await useTransactionCategories({ includeArchived: true })
-const api = useCashbookApi()
+const cashbook = useCashbookApi()
 
 const editing = ref(false)
 const submitting = ref(false)
@@ -36,7 +38,7 @@ async function onUpdate(payload: TransactionFormOutput) {
   try {
     // `type` is immutable server-side. Shape rules: transfers carry a
     // destination and no category, income/expense the other way round.
-    await api.updateTransaction(id, {
+    await cashbook.updateTransaction(id, {
       transactionDate: payload.transactionDate,
       accountId: payload.accountId,
       amount: payload.amount,
@@ -59,10 +61,10 @@ async function onUpdate(payload: TransactionFormOutput) {
 async function onDelete() {
   deleting.value = true
   try {
-    await api.deleteTransaction(id)
+    await cashbook.deleteTransaction(id)
     confirmDelete.value = false
     toast.add({ color: 'success', title: 'Transaksi dihapus', icon: 'i-lucide-trash-2' })
-    await router.push('/admin/cashbook/transactions')
+    await router.push(tp('/admin/cashbook/transactions'))
   } catch (e) {
     toast.add({ color: 'error', title: 'Gagal menghapus transaksi', description: apiErrorMessage(e, 'Terjadi kesalahan') })
   } finally {
@@ -85,7 +87,7 @@ const typeBadge = computed(() => {
       :title="editing ? 'Edit Transaksi' : 'Detail Transaksi'"
     >
       <template #actions>
-        <UButton color="neutral" variant="ghost" icon="i-lucide-arrow-left" to="/admin/cashbook/transactions" label="Kembali" />
+        <UButton color="neutral" variant="ghost" icon="i-lucide-arrow-left" :to="tp('/admin/cashbook/transactions')" label="Kembali" />
       </template>
     </AdminPageHeader>
 

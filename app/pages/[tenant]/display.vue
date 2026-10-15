@@ -7,17 +7,18 @@ import NextPrayerCard from '~/components/display/NextPrayerCard.vue'
 import PrayerSlider from '~/components/display/PrayerSlider.vue'
 import AnnouncementMarquee from '~/components/display/AnnouncementMarquee.vue'
 import MasjidInfo from '~/components/display/MasjidInfo.vue'
+const api = useApiBase()
 
 definePageMeta({ layout: false })
 
 const REFRESH_MS = 10 * 60_000
 
-const { data: mosque, refresh: refreshMosque } = useFetch('/api/public/mosque', { key: 'public-mosque' })
-const { data: events, refresh: refreshEvents } = useFetch('/api/public/events', {
+const { data: mosque, refresh: refreshMosque } = useFetch(`${api}/public/mosque`, { key: 'public-mosque' })
+const { data: events, refresh: refreshEvents } = useFetch(`${api}/public/events`, {
   key: 'display-events',
   query: { limit: 5 },
 })
-const { data: cashbook, refresh: refreshCashbook } = useFetch('/api/public/cashbook/summary', {
+const { data: cashbook, refresh: refreshCashbook } = useFetch(`${api}/public/cashbook/summary`, {
   key: 'display-cashbook',
   query: { period: 'month' },
 })

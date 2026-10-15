@@ -6,6 +6,8 @@ import {
   type TransactionFilters,
 } from '~/composables/useCashbook'
 import type { TransactionFilterValue } from '~/components/admin/cashbook/TransactionFilters.vue'
+const api = useApiBase()
+const tp = useTenantPath()
 
 definePageMeta({ layout: 'admin' })
 useHead({ title: 'Transaksi — Buku Kas' })
@@ -37,7 +39,7 @@ function exportCsv() {
   const params = new URLSearchParams()
   if (filters.value.from) params.set('from', filters.value.from)
   if (filters.value.to) params.set('to', filters.value.to)
-  window.location.href = `/api/admin/cashbook/reports/export?${params}`
+  window.location.href = `${api}/admin/cashbook/reports/export?${params}`
 }
 </script>
 
@@ -50,7 +52,7 @@ function exportCsv() {
     >
       <template #actions>
         <UButton color="neutral" variant="ghost" icon="i-lucide-download" label="Export CSV" @click="exportCsv" />
-        <UButton v-if="isAdmin" to="/admin/cashbook/transactions/new" icon="i-lucide-plus" label="Transaksi Baru" class="font-semibold" />
+        <UButton v-if="isAdmin" :to="tp('/admin/cashbook/transactions/new')" icon="i-lucide-plus" label="Transaksi Baru" class="font-semibold" />
       </template>
     </AdminPageHeader>
 
@@ -64,7 +66,7 @@ function exportCsv() {
       :rows="txData?.data ?? []"
       :loading="pending"
       :pagination="txData?.pagination"
-      @open="(id: string) => router.push(`/admin/cashbook/transactions/${id}`)"
+      @open="(id: string) => router.push(tp(`/admin/cashbook/transactions/${id}`))"
       @update:page="go"
     />
   </div>

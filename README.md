@@ -18,7 +18,11 @@
 >
 > Untuk info lebih lengkap, kolaborasi, atau pertanyaan, hubungi **[@codingtengahmalam](https://instagram.com/codingtengahmalam)** di Instagram atau [Threads](https://threads.net/@codingtengahmalam).
 
-OpenMasjid menggabungkan tiga permukaan utama dalam satu codebase:
+OpenMasjid adalah platform **multi-masjid**: satu deployment melayani banyak masjid, masing-masing
+di alamatnya sendiri (`openmasjid.id/<nama-masjid>`) dengan data, akun, dan pengurus yang terisolasi
+penuh (Row Level Security PostgreSQL). Masjid baru bisa mendaftar sendiri di `/daftar`.
+
+Setiap masjid mendapatkan tiga permukaan utama:
 
 1. **Portal Jamaah** — halaman publik berisi profil masjid, jadwal sholat, dan daftar kegiatan yang dapat diikuti.
 2. **CMS Admin (DKM)** — dashboard pengelolaan kegiatan, pendaftar, kategori, dan pengaturan masjid.
@@ -82,6 +86,22 @@ Dibangun dengan **Nuxt 4 + Nuxt UI v4**, **PostgreSQL** via **Drizzle ORM**, val
 > Galeri singkat dari tiga permukaan OpenMasjid. Klik gambar untuk versi penuh — file aslinya tersimpan di [docs/screenshot/](docs/screenshot/).
 
 <table>
+  <tr>
+    <td width="50%" align="center">
+      <a href="docs/screenshot/platform-landing.png">
+        <img src="docs/screenshot/platform-landing.png" alt="Landing & direktori masjid" />
+      </a>
+      <br />
+      <sub><b>🌐 Platform</b><br />Landing & direktori masjid</sub>
+    </td>
+    <td width="50%" align="center">
+      <a href="docs/screenshot/onboarding.png">
+        <img src="docs/screenshot/onboarding.png" alt="Daftarkan masjid" />
+      </a>
+      <br />
+      <sub><b>📝 Daftarkan Masjid</b><br />Onboarding mandiri + akun pemilik</sub>
+    </td>
+  </tr>
   <tr>
     <td width="50%" align="center">
       <a href="docs/screenshot/tv-display.png">
@@ -154,7 +174,13 @@ Dibangun dengan **Nuxt 4 + Nuxt UI v4**, **PostgreSQL** via **Drizzle ORM**, val
       <br />
       <sub><b>🔍 Transparansi</b><br />Ringkasan keuangan publik untuk jamaah</sub>
     </td>
-    <td width="50%"></td>
+    <td width="50%" align="center">
+      <a href="docs/screenshot/admin-team.png">
+        <img src="docs/screenshot/admin-team.png" alt="Pengurus" />
+      </a>
+      <br />
+      <sub><b>🧑‍🤝‍🧑 Pengurus</b><br />Undangan & peran pengurus (pemilik)</sub>
+    </td>
   </tr>
 </table>
 
@@ -164,20 +190,24 @@ Dibangun dengan **Nuxt 4 + Nuxt UI v4**, **PostgreSQL** via **Drizzle ORM**, val
 
 | Rute | Mode | Deskripsi |
 |------|------|-----------|
-| `/` | Public | Portal jamaah — profil & kegiatan |
-| `/display` | Public TV | Tampilan layar besar |
-| `/auth/login` | Auth | Login pengurus |
-| `/auth/forgot-password` | Auth | Minta tautan reset password |
-| `/auth/reset-password` | Auth | Buat password baru |
-| `/transparency` | Public | Ringkasan keuangan untuk jamaah |
-| `/admin` | Admin | Dashboard utama |
-| `/admin/events` | Admin | Daftar kegiatan |
-| `/admin/events/new` | Admin | Tambah kegiatan |
-| `/admin/events/[id]` | Admin | Detail kegiatan |
-| `/admin/registrants` | Admin | Daftar pendaftar |
-| `/admin/categories` | Admin | Kategori kegiatan |
-| `/admin/settings` | Admin | Pengaturan masjid & jadwal sholat |
-| `/admin/cashbook/**` | Admin | Buku kas: ringkasan, transaksi, akun, kategori, laporan |
+| `/` | Publik | Landing OpenMasjid + direktori masjid |
+| `/daftar` | Publik | Daftarkan masjid baru (membuat akun pemilik) |
+| `/<masjid>` | Publik | Portal jamaah — profil, jadwal sholat & kegiatan |
+| `/<masjid>/display` | Publik TV | Tampilan layar besar |
+| `/<masjid>/transparency` | Publik | Ringkasan keuangan untuk jamaah |
+| `/<masjid>/auth/login` | Auth | Login pengurus masjid tersebut |
+| `/<masjid>/auth/forgot-password`, `/reset-password` | Auth | Reset password |
+| `/<masjid>/auth/accept-invite` | Auth | Terima undangan pengurus |
+| `/<masjid>/admin` | Admin | Dashboard |
+| `/<masjid>/admin/events/**` | Admin | Kegiatan: daftar, detail, tambah, ubah |
+| `/<masjid>/admin/registrants` | Admin | Pendaftar & check-in |
+| `/<masjid>/admin/categories` | Admin | Kategori kegiatan |
+| `/<masjid>/admin/cashbook/**` | Admin | Buku kas: ringkasan, transaksi, akun, kategori, laporan |
+| `/<masjid>/admin/settings` | Admin | Pengaturan masjid & jadwal sholat |
+| `/<masjid>/admin/team` | Pemilik | Kelola pengurus & undangan |
+
+Akun berlaku **per masjid**: pengurus dan jamaah masjid A tidak bisa masuk ke masjid B dengan akun yang sama.
+Peran: `admin` (kelola data), `viewer` (lihat saja), dan **pemilik** (admin yang juga mengelola pengurus).
 
 ---
 
@@ -188,11 +218,13 @@ Dibangun dengan **Nuxt 4 + Nuxt UI v4**, **PostgreSQL** via **Drizzle ORM**, val
    bun install
    ```
 2. Salin `.env.example` menjadi `.env` lalu isi `DATABASE_URL`, `DATABASE_DIRECT_URL`,
-   `BETTER_AUTH_SECRET` (`openssl rand -base64 32`), `BETTER_AUTH_URL`, dan `SEED_ADMIN_*`.
+   `BETTER_AUTH_SECRET` (`openssl rand -base64 32`), `BETTER_AUTH_URL`, `SEED_TENANT_*`, dan `SEED_ADMIN_*`.
 3. Siapkan database:
    ```bash
-   bun run db:migrate   # terapkan migrasi
-   bun run db:seed      # data awal + akun admin pertama
+   bun run db:migrate   # terapkan migrasi (pakai DATABASE_DIRECT_URL / role owner)
+   # sekali saja: buat role aplikasi tanpa BYPASSRLS, lalu pakai di DATABASE_URL
+   psql "$DATABASE_DIRECT_URL" -f server/db/sql/0001_app_role.sql
+   bun run db:seed      # satu masjid contoh + akun pemiliknya
    # opsional, data contoh:
    bun run db:seed:events
    bun run db:seed:cashbook
@@ -201,16 +233,23 @@ Dibangun dengan **Nuxt 4 + Nuxt UI v4**, **PostgreSQL** via **Drizzle ORM**, val
    ```bash
    bun run dev
    ```
-   Aplikasi tersedia di `http://localhost:3000`; masuk ke CMS di `/auth/login` dengan akun `SEED_ADMIN_*`.
+   Aplikasi tersedia di `http://localhost:3000`; masjid contoh ada di `/<SEED_TENANT_SLUG>`, CMS-nya di
+   `/<SEED_TENANT_SLUG>/auth/login` dengan akun `SEED_ADMIN_*`. Masjid lain bisa didaftarkan di `/daftar`.
 
 Pemeriksaan kualitas & build production:
 
 ```bash
 bun run lint
 bun run typecheck
+bun run test:isolation   # uji isolasi antar masjid (server harus jalan)
 bun run build && bun run preview
 ```
 
+> **Upgrade dari versi single-masjid**: migrasi `0003`–`0007` memindahkan seluruh data lama ke satu
+> masjid (slug dari profil masjid lama) dan menjadikan admin pertama sebagai pemilik. Setelah itu
+> URL berubah: `/admin` → `/<slug>/admin`. Jalankan juga `server/db/sql/0001_app_role.sql` dan ganti
+> `DATABASE_URL` ke role `openmasjid_app`.
+>
 > **Upgrade dari versi Supabase Auth**: akun lama di tabel `users` tidak punya password di Better Auth.
 > Jalankan `bun run db:migrate`, lalu buat ulang admin lewat `bun run db:seed` atau minta user memakai
 > "Lupa password". Trigger `auth.users → public.users` lama boleh dihapus dari database Supabase.

@@ -2,6 +2,9 @@
 import type { FormSubmitEvent } from '@nuxt/ui'
 import type { z } from 'zod'
 import { resetPasswordSchema } from '#shared/schemas/auth'
+const slug = useTenantSlug()
+const authClient = computed(() => getAuthClient(slug.value))
+const tp = useTenantPath()
 
 definePageMeta({ layout: 'auth' })
 useHead({ title: 'Password Baru — OpenMasjid CMS' })
@@ -19,14 +22,14 @@ const error = ref<string | null>(null)
 async function onSubmit(event: FormSubmitEvent<Input>) {
   error.value = null
   loading.value = true
-  const { error: err } = await authClient.resetPassword({ newPassword: event.data.password, token: token.value })
+  const { error: err } = await authClient.value.resetPassword({ newPassword: event.data.password, token: token.value })
   loading.value = false
   if (err) {
     error.value = err.message || 'Tautan tidak valid atau sudah kedaluwarsa.'
     return
   }
   toast.add({ title: 'Password diperbarui', description: 'Silakan masuk dengan password baru.', color: 'success' })
-  await navigateTo('/auth/login')
+  await navigateTo(tp('/auth/login'))
 }
 </script>
 

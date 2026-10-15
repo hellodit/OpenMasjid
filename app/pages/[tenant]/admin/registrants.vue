@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { REGISTRANT_STATUS_LABELS, type RegistrantStatus } from '#shared/utils/events'
 import type { RegistrantAction, RegistrantRow } from '~/components/admin/registrants/Table.vue'
+const api = useApiBase()
 
 definePageMeta({ layout: 'admin' })
 useHead({ title: 'Pendaftar — OpenMasjid CMS' })
@@ -45,7 +46,7 @@ watch(q, (v) => {
 })
 
 /* ── Event filter options ──────────────────────────────────────────── */
-const { data: eventList } = await useFetch('/api/admin/events', { query: { pageSize: 100 }, key: 'registrants-event-options' })
+const { data: eventList } = await useFetch(`${api}/admin/events`, { query: { pageSize: 100 }, key: 'registrants-event-options' })
 const eventItems = computed(() => [
   { label: 'Semua kegiatan', value: 'all' },
   ...(eventList.value?.data ?? []).map(e => ({ label: e.title, value: e.id })),
@@ -63,15 +64,15 @@ const listQuery = computed(() => ({
   page: page.value,
   pageSize: PAGE_SIZE,
 }))
-const { data, status: fetchStatus, refresh } = await useFetch('/api/admin/registrants', { query: listQuery })
+const { data, status: fetchStatus, refresh } = await useFetch(`${api}/admin/registrants`, { query: listQuery })
 
 /* Summary counts (scoped to the selected event): pageSize=1 → read pagination.total. */
 const countQuery = (s?: RegistrantStatus) => computed(() => ({ eventId: eventId.value, status: s, pageSize: 1 }))
 const [allCount, confirmedCount, attendedCount, cancelledCount] = await Promise.all([
-  useFetch('/api/admin/registrants', { query: countQuery(), key: 'registrants-count-all' }),
-  useFetch('/api/admin/registrants', { query: countQuery('confirmed'), key: 'registrants-count-confirmed' }),
-  useFetch('/api/admin/registrants', { query: countQuery('attended'), key: 'registrants-count-attended' }),
-  useFetch('/api/admin/registrants', { query: countQuery('cancelled'), key: 'registrants-count-cancelled' }),
+  useFetch(`${api}/admin/registrants`, { query: countQuery(), key: 'registrants-count-all' }),
+  useFetch(`${api}/admin/registrants`, { query: countQuery('confirmed'), key: 'registrants-count-confirmed' }),
+  useFetch(`${api}/admin/registrants`, { query: countQuery('attended'), key: 'registrants-count-attended' }),
+  useFetch(`${api}/admin/registrants`, { query: countQuery('cancelled'), key: 'registrants-count-cancelled' }),
 ])
 const counts = computed(() => ({
   all: allCount.data.value?.pagination.total ?? 0,
@@ -101,7 +102,7 @@ const ACTION_TOAST: Record<RegistrantAction, string> = {
 async function runAction(row: RegistrantRow, action: RegistrantAction) {
   busyId.value = row.id
   try {
-    await $fetch(`/api/admin/registrants/${row.id}`, { method: 'POST', body: { action } })
+    await $fetch(`${api}/admin/registrants/${row.id}`, { method: 'POST', body: { action } })
     toast.add({ color: 'success', title: ACTION_TOAST[action], description: `${row.user.fullName} · ${row.event.title}` })
     await Promise.all([refresh(), allCount.refresh(), confirmedCount.refresh(), attendedCount.refresh(), cancelledCount.refresh()])
   }

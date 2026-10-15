@@ -1,11 +1,12 @@
 <script setup lang="ts">
+const api = useApiBase()
 definePageMeta({ layout: 'admin' })
 useHead({ title: 'Kategori — OpenMasjid CMS' })
 
 const { isAdmin } = useAuth()
 const toast = useToast()
 
-const { data, error, refresh, status } = await useFetch('/api/admin/categories')
+const { data, error, refresh, status } = await useFetch(`${api}/admin/categories`)
 
 const errorMessage = computed(() => (error.value?.data as { statusMessage?: string } | undefined)?.statusMessage ?? error.value?.message)
 
@@ -43,7 +44,7 @@ const busyId = ref<string | null>(null)
 async function toggleActive(c: Category, isActive: boolean) {
   busyId.value = c.id
   try {
-    await $fetch(`/api/admin/categories/${c.id}`, { method: 'PUT', body: { isActive } })
+    await $fetch(`${api}/admin/categories/${c.id}`, { method: 'PUT', body: { isActive } })
     toast.add({ color: 'success', title: isActive ? 'Kategori diaktifkan' : 'Kategori dinonaktifkan' })
     await refresh()
   }
@@ -68,7 +69,7 @@ async function confirmRemove() {
   if (!c) return
   removeBusy.value = true
   try {
-    const res = await $fetch(`/api/admin/categories/${c.id}`, { method: 'DELETE' })
+    const res = await $fetch(`${api}/admin/categories/${c.id}`, { method: 'DELETE' })
     toast.add({
       color: 'success',
       title: res.archived ? 'Kategori diarsipkan' : 'Kategori dihapus',

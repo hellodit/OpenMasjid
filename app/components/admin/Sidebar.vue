@@ -1,8 +1,11 @@
 <script setup lang="ts">
 const route = useRoute()
-const { user, signOut } = useAuth()
+const { user, isOwner, signOut } = useAuth()
+const { tenant, slug } = useTenantContext()
+const tp = useTenantPath()
 
-const roleLabel: Record<string, string> = { admin: 'Admin DKM', viewer: 'Pengurus (lihat saja)', jamaah: 'Jamaah' }
+const roleLabel = computed(() =>
+  isOwner.value ? 'Pemilik masjid' : ({ admin: 'Admin DKM', viewer: 'Pengurus (lihat saja)', jamaah: 'Jamaah' } as Record<string, string>)[user.value?.role ?? ''] ?? '')
 const initialsOf = (name: string) =>
   name.split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase()
 
@@ -27,17 +30,22 @@ const manage: NavItem[] = [
     path: '/admin/cashbook', matches: ['/admin/cashbook'] },
 ]
 
-const system: NavItem[] = [
+const system = computed<NavItem[]>(() => [
   { id: 'pengaturan', name: 'Pengaturan',   icon: 'lucide:settings', path: '/admin/settings' },
+  ...(isOwner.value ? [{ id: 'pengurus', name: 'Pengurus', icon: 'lucide:user-cog', path: '/admin/team' }] : []),
   { id: 'tv',         name: 'Layar TV',      icon: 'lucide:monitor', path: '/display' },
   { id: 'transparansi', name: 'Transparansi', icon: 'lucide:globe', path: '/transparency' },
-]
+])
+
+/** Path relative to the mosque (/al-hikmah/admin/events → /admin/events). */
+const relPath = computed(() => route.path.slice(`/${slug.value}`.length) || '/')
 
 const isActive = (item: NavItem) => {
   if (!item.path) return false
-  if (item.id === 'dashboard') return route.path === '/admin'
-  if (item.matches?.length) return item.matches.some(m => route.path.startsWith(m))
-  return route.path === item.path || route.path.startsWith(item.path + '/')
+  const p = relPath.value
+  if (item.id === 'dashboard') return p === '/admin'
+  if (item.matches?.length) return item.matches.some(m => p.startsWith(m))
+  return p === item.path || p.startsWith(item.path + '/')
 }
 </script>
 
@@ -51,11 +59,11 @@ const isActive = (item: NavItem) => {
         <AdminStarMark :size="22" />
       </div>
       <div>
-        <div class="font-serif text-[18px] font-semibold leading-[1.1] tracking-[0.2px]">
-          OpenMasjid
+        <div class="font-serif text-[16px] font-semibold leading-[1.15] tracking-[0.2px] line-clamp-2">
+          {{ tenant?.name ?? 'OpenMasjid' }}
         </div>
         <div class="text-[11px] uppercase tracking-[1px] text-[oklch(0.78_0.04_155)] mt-0.5">
-          Event Management
+          OpenMasjid CMS
         </div>
       </div>
     </div>
@@ -67,7 +75,7 @@ const isActive = (item: NavItem) => {
       <NuxtLink
         v-for="it in manage"
         :key="it.id"
-        :to="it.path ?? '#'"
+        :to="it.path ? tp(it.path) : '#'"
         :class="[
           'flex items-center gap-3 px-3 py-2.5 rounded-cms-sm text-sm font-medium text-left transition-colors',
           isActive(it)
@@ -96,7 +104,7 @@ const isActive = (item: NavItem) => {
       <NuxtLink
         v-for="it in system"
         :key="it.id"
-        :to="it.path ?? '#'"
+        :to="it.path ? tp(it.path) : '#'"
         :class="[
           'flex items-center gap-3 px-3 py-2.5 rounded-cms-sm text-sm font-medium text-left transition-colors',
           isActive(it)
@@ -129,7 +137,7 @@ const isActive = (item: NavItem) => {
         </div>
         <div class="leading-[1.25] min-w-0 flex-1">
           <div class="font-semibold text-[13px] text-white truncate">{{ user.name }}</div>
-          <div class="text-[11px] text-[oklch(0.72_0.03_155)]">{{ roleLabel[user.role] }}</div>
+          <div class="text-[11px] text-[oklch(0.72_0.03_155)]">{{ roleLabel }}</div>
         </div>
         <Icon name="lucide:chevrons-up-down" size="16" class="opacity-60" />
       </button>

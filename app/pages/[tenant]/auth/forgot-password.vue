@@ -2,6 +2,9 @@
 import type { FormSubmitEvent } from '@nuxt/ui'
 import type { z } from 'zod'
 import { forgotPasswordSchema } from '#shared/schemas/auth'
+const slug = useTenantSlug()
+const authClient = computed(() => getAuthClient(slug.value))
+const tp = useTenantPath()
 
 definePageMeta({ layout: 'auth' })
 useHead({ title: 'Lupa Password — OpenMasjid CMS' })
@@ -15,9 +18,9 @@ const sent = ref(false)
 async function send(email: string) {
   error.value = null
   loading.value = true
-  const { error: err } = await authClient.requestPasswordReset({
+  const { error: err } = await authClient.value.requestPasswordReset({
     email,
-    redirectTo: '/auth/reset-password',
+    redirectTo: tp('/auth/reset-password'),
   })
   loading.value = false
   if (err) {
@@ -88,7 +91,7 @@ const onSubmit = (event: FormSubmitEvent<Input>) => send(event.data.email)
       </p>
 
       <div class="flex flex-col sm:flex-row gap-2.5 w-full">
-        <UButton to="/auth/login" icon="i-lucide-log-in" class="flex-1 justify-center" label="Kembali ke halaman masuk" />
+        <UButton :to="tp('/auth/login')" icon="i-lucide-log-in" class="flex-1 justify-center" label="Kembali ke halaman masuk" />
         <UButton
           color="neutral"
           variant="outline"
@@ -103,7 +106,7 @@ const onSubmit = (event: FormSubmitEvent<Input>) => send(event.data.email)
 
     <p v-if="!sent" class="text-[13px] text-cms-muted text-center mt-6">
       <NuxtLink
-        to="/auth/login"
+        :to="tp('/auth/login')"
         class="inline-flex items-center gap-1.5 font-semibold text-cms-green-700 hover:text-cms-green-800"
       >
         <UIcon name="i-lucide-arrow-left" class="size-3.5" />

@@ -3,6 +3,8 @@ import type { DropdownMenuItem } from '@nuxt/ui'
 import type { PersistedEventStatus } from '#shared/utils/events'
 import { eventToFormState } from '~/components/admin/form/EventForm.vue'
 import { dateParts, formatDate, formatTimeRange, initials, timeAgo } from '~/utils/format'
+const api = useApiBase()
+const tp = useTenantPath()
 
 definePageMeta({ layout: 'admin' })
 
@@ -11,7 +13,7 @@ const toast = useToast()
 const { isAdmin } = useAuth()
 const id = computed(() => String(route.params.id))
 
-const { data: ev, error, refresh } = await useFetch(() => `/api/admin/events/${id.value}`)
+const { data: ev, error, refresh } = await useFetch(() => `${api}/admin/events/${id.value}`)
 if (error.value?.statusCode === 404 || error.value?.statusCode === 400)
   throw createError({ statusCode: 404, statusMessage: 'Kegiatan tidak ditemukan', fatal: true })
 
@@ -44,7 +46,7 @@ async function setStatus(status: PersistedEventStatus) {
   if (!ev.value) return
   busy.value = true
   try {
-    await $fetch(`/api/admin/events/${id.value}`, {
+    await $fetch(`${api}/admin/events/${id.value}`, {
       method: 'PUT',
       body: { ...eventToFormState(ev.value), status },
     })
@@ -79,10 +81,10 @@ const deleting = ref(false)
 async function remove() {
   deleting.value = true
   try {
-    await $fetch(`/api/admin/events/${id.value}`, { method: 'DELETE' })
+    await $fetch(`${api}/admin/events/${id.value}`, { method: 'DELETE' })
     toast.add({ color: 'success', title: 'Kegiatan dihapus' })
     deleteOpen.value = false
-    await navigateTo('/admin/events')
+    await navigateTo(tp('/admin/events'))
   }
   catch (e) {
     const err = e as { data?: { statusMessage?: string } }
@@ -97,7 +99,7 @@ async function remove() {
 <template>
   <div>
     <div class="flex items-center justify-between gap-2 flex-wrap mb-[18px]">
-      <UButton to="/admin/events" color="neutral" variant="ghost" icon="i-lucide-arrow-left" class="font-semibold">
+      <UButton :to="tp('/admin/events')" color="neutral" variant="ghost" icon="i-lucide-arrow-left" class="font-semibold">
         Kembali ke Daftar
       </UButton>
       <div v-if="ev && isAdmin" class="flex gap-2">
@@ -106,7 +108,7 @@ async function remove() {
             Status
           </UButton>
         </UDropdownMenu>
-        <UButton :to="`/admin/events/${id}/edit`" color="neutral" variant="outline" icon="i-lucide-pencil" class="font-semibold">
+        <UButton :to="tp(`/admin/events/${id}/edit`)" color="neutral" variant="outline" icon="i-lucide-pencil" class="font-semibold">
           Edit
         </UButton>
         <UButton color="error" variant="outline" icon="i-lucide-trash-2" class="font-semibold" @click="deleteOpen = true">
@@ -209,7 +211,7 @@ async function remove() {
             <h4 class="font-serif text-[16px] m-0 mb-3 font-semibold flex items-center justify-between">
               Pendaftar Terbaru
               <NuxtLink
-                :to="{ path: '/admin/registrants', query: { eventId: ev.id } }"
+                :to="{ path: tp('/admin/registrants'), query: { eventId: ev.id } }"
                 class="text-[13px] font-sans text-cms-green-700 font-semibold hover:underline"
               >
                 Lihat semua

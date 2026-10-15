@@ -5,6 +5,7 @@ import {
   useCashbookSummary,
   useTransactions,
 } from '~/composables/useCashbook'
+const tp = useTenantPath()
 
 definePageMeta({ layout: 'admin' })
 useHead({ title: 'Buku Kas — OpenMasjid CMS' })
@@ -22,9 +23,9 @@ const [{ data: summary }, { data: accountsData }, { data: recentData, pending: r
 const router = useRouter()
 
 const quickActions = [
-  { to: '/admin/cashbook/transactions/new?type=income', icon: 'i-lucide-arrow-down-circle', label: 'Catat Pemasukan' },
-  { to: '/admin/cashbook/transactions/new?type=expense', icon: 'i-lucide-arrow-up-circle', label: 'Catat Pengeluaran' },
-  { to: '/admin/cashbook/transactions/new?type=transfer', icon: 'i-lucide-repeat', label: 'Transfer antar Akun' },
+  { to: tp('/admin/cashbook/transactions/new?type=income'), icon: 'i-lucide-arrow-down-circle', label: 'Catat Pemasukan' },
+  { to: tp('/admin/cashbook/transactions/new?type=expense'), icon: 'i-lucide-arrow-up-circle', label: 'Catat Pengeluaran' },
+  { to: tp('/admin/cashbook/transactions/new?type=transfer'), icon: 'i-lucide-repeat', label: 'Transfer antar Akun' },
 ]
 </script>
 
@@ -36,10 +37,10 @@ const quickActions = [
       description="Pencatatan pemasukan, pengeluaran, dan saldo kas masjid. Data dapat dishare ke jamaah lewat halaman transparansi."
     >
       <template #actions>
-        <UButton to="/admin/cashbook/reports" color="neutral" variant="ghost" icon="i-lucide-bar-chart-3" label="Laporan" />
+        <UButton :to="tp('/admin/cashbook/reports')" color="neutral" variant="ghost" icon="i-lucide-bar-chart-3" label="Laporan" />
         <UButton
           v-if="isAdmin"
-          to="/admin/cashbook/transactions/new"
+          :to="tp('/admin/cashbook/transactions/new')"
           icon="i-lucide-plus"
           label="Transaksi Baru"
           class="font-semibold"
@@ -81,7 +82,7 @@ const quickActions = [
         <AdminPanel title="Transaksi Terakhir">
           <template #head>
             <NuxtLink
-              to="/admin/cashbook/transactions"
+              :to="tp('/admin/cashbook/transactions')"
               class="text-[13px] font-semibold text-cms-green-700 hover:text-cms-green-800"
             >
               Lihat semua →
@@ -91,7 +92,7 @@ const quickActions = [
             :rows="recentData?.data ?? []"
             :loading="recentLoading"
             empty-message="Belum ada transaksi. Mulai dengan mencatat infaq atau donasi pertama."
-            @open="(id: string) => router.push(`/admin/cashbook/transactions/${id}`)"
+            @open="(id: string) => router.push(tp(`/admin/cashbook/transactions/${id}`))"
           />
         </AdminPanel>
       </div>
@@ -117,7 +118,7 @@ const quickActions = [
                 />
               </template>
               <UButton
-                to="/admin/cashbook/accounts"
+                :to="tp('/admin/cashbook/accounts')"
                 color="neutral"
                 variant="ghost"
                 icon="i-lucide-landmark"
@@ -125,7 +126,7 @@ const quickActions = [
                 class="font-semibold"
               />
               <UButton
-                to="/admin/cashbook/categories"
+                :to="tp('/admin/cashbook/categories')"
                 color="neutral"
                 variant="ghost"
                 icon="i-lucide-tags"

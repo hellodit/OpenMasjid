@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const tp = useTenantPath()
 defineProps<{ crumbs: string[] }>()
 </script>
 
@@ -13,7 +14,7 @@ defineProps<{ crumbs: string[] }>()
 
     <div class="ml-auto flex items-center gap-2">
       <UButton
-        to="/admin/settings"
+        :to="tp('/admin/settings')"
         color="neutral"
         variant="outline"
         icon="i-lucide-settings"

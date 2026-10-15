@@ -115,6 +115,8 @@ export function emptyEventState(): EventFormState {
 </script>
 
 <script setup lang="ts">
+const api = useApiBase()
+const tp = useTenantPath()
 const props = defineProps<{
   /** Existing event id → PUT; omitted → POST. */
   eventId?: string
@@ -125,7 +127,7 @@ const toast = useToast()
 const state = reactive<EventFormState>(props.initial ? structuredClone(toRaw(props.initial)) : emptyEventState())
 const saving = ref(false)
 
-const { data: categories } = await useFetch('/api/admin/categories', { key: 'admin-event-categories', default: () => [] })
+const { data: categories } = await useFetch(`${api}/admin/categories`, { key: 'admin-event-categories', default: () => [] })
 const pickable = computed(() => (categories.value ?? []).filter(c => c.isActive || c.id === state.categoryId))
 
 const steps = [
@@ -165,14 +167,14 @@ async function onSubmit(event: FormSubmitEvent<EventOutput>) {
   saving.value = true
   try {
     const { id } = props.eventId
-      ? await $fetch(`/api/admin/events/${props.eventId}`, { method: 'PUT', body: event.data })
-      : await $fetch('/api/admin/events', { method: 'POST', body: event.data })
+      ? await $fetch(`${api}/admin/events/${props.eventId}`, { method: 'PUT', body: event.data })
+      : await $fetch(`${api}/admin/events`, { method: 'POST', body: event.data })
     toast.add({
       color: 'success',
       title: props.eventId ? 'Perubahan disimpan' : 'Kegiatan dibuat',
       description: event.data.title,
     })
-    await navigateTo(`/admin/events/${id}`)
+    await navigateTo(tp(`/admin/events/${id}`))
   }
   catch (e) {
     const err = e as { data?: { statusMessage?: string }, message?: string }
@@ -224,7 +226,7 @@ function onError(event: FormErrorEvent) {
         <UFormField label="Kategori" name="categoryId" required class="mb-3.5" :ui="fieldUi">
           <AdminFormCategoryPicker v-model="state.categoryId" :categories="pickable" />
           <div v-if="!pickable.length" class="text-[12.5px] text-cms-muted">
-            Belum ada kategori aktif. <NuxtLink to="/admin/categories" class="text-cms-green-700 underline">Tambah kategori</NuxtLink>
+            Belum ada kategori aktif. <NuxtLink :to="tp('/admin/categories')" class="text-cms-green-700 underline">Tambah kategori</NuxtLink>
           </div>
         </UFormField>
 
@@ -451,7 +453,7 @@ function onError(event: FormErrorEvent) {
 
       <!-- Action bar -->
       <div class="flex justify-between items-center gap-2 bg-cms-surface border border-cms-border rounded-cms px-4 py-3 sticky bottom-0 z-10">
-        <UButton color="neutral" variant="ghost" :to="eventId ? `/admin/events/${eventId}` : '/admin/events'">
+        <UButton color="neutral" variant="ghost" :to="tp(eventId ? `/admin/events/${eventId}` : '/admin/events')">
           Batalkan
         </UButton>
         <UButton type="submit" icon="i-lucide-check" :loading="saving" class="font-semibold">
