@@ -103,6 +103,9 @@ async function remove() {
         Kembali ke Daftar
       </UButton>
       <div v-if="ev && isAdmin" class="flex gap-2">
+        <UButton :to="{ path: tp('/admin/check-in'), query: { eventId: id } }" color="primary" variant="soft" icon="i-lucide-scan-line" class="font-semibold">
+          Check-in
+        </UButton>
         <UDropdownMenu :items="statusItems" :content="{ align: 'end' }">
           <UButton color="neutral" variant="outline" icon="i-lucide-toggle-right" trailing-icon="i-lucide-chevron-down" :loading="busy" class="font-semibold">
             Status

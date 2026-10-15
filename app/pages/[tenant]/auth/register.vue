@@ -37,6 +37,9 @@ const redirectTarget = computed(() => {
   const r = route.query.redirect
   return typeof r === 'string' && r.startsWith(`${tp('/')}/`) && !r.startsWith('//') ? r : null
 })
+// Already signed in at this mosque: nothing to register.
+if (ctx.user.value) await navigateTo(redirectTarget.value ?? tp('/my-tickets'), { replace: true })
+
 const loginTo = computed(() => ({ path: tp('/auth/login'), query: redirectTarget.value ? { redirect: redirectTarget.value } : {} }))
 
 async function onSubmit(event: FormSubmitEvent<RegisterInput>) {

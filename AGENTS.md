@@ -98,8 +98,9 @@ app/                      # Frontend (Vue)
   pages/index.vue          # landing: hero search masjid (→ /<slug>) + direktori
   pages/register.vue       # onboarding masjid baru
   components/platform/     # komponen halaman global (MosqueSearch)
-  pages/[tenant]/          # portal, display (TV), transparency, auth/*, admin/** per masjid
-  components/admin|display/
+  pages/[tenant]/          # portal, events/[slug] (daftar), my-tickets, display (TV), transparency,
+                           # auth/* (login, register jamaah), admin/** (termasuk check-in) per masjid
+  components/admin|display|portal/
 server/
   middleware/00.tenant.ts # /api/t/<slug>/… → event.context.tenant
   api/tenants.get.ts, api/onboarding/**   # global
