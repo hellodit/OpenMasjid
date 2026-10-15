@@ -1,8 +1,14 @@
 # AGENTS.md — OpenMasjid
 
 Panduan kerja untuk AI agent (Claude Code, Codex, Cursor, dll.) dan kontributor manusia.
-Baca file ini sebelum mengubah kode. Bahasa UI & pesan error: **Bahasa Indonesia**.
-Identifier kode, komentar, dan commit: bahasa Inggris.
+Baca file ini sebelum mengubah kode.
+
+**Bahasa:**
+- **Bahasa Inggris** untuk semua yang berupa kode: path URL & route (`/register`, `/admin/team`),
+  nama file, identifier, nilai enum & key data (`member`, `fajr`, `dhuhr`), id/anchor HTML, komentar,
+  log script, dan pesan commit.
+- **Bahasa Indonesia** hanya untuk teks yang dilihat pengguna: label UI, pesan error/validasi, toast,
+  serta data contoh/seed (nama kategori, slug konten).
 
 ---
 
@@ -34,7 +40,7 @@ OpenMasjid melayani **banyak masjid (tenant)** dari satu deployment dan satu dat
 [docs/multi-tenant-architecture.md](docs/multi-tenant-architecture.md).
 
 - **Routing berbasis path.** Halaman masjid: `/<slug>/…` (`app/pages/[tenant]/**`). API masjid:
-  `/api/t/<slug>/…` (`server/api/t/[tenant]/**`). Global: `/` (landing + direktori), `/daftar`
+  `/api/t/<slug>/…` (`server/api/t/[tenant]/**`). Global: `/` (landing + direktori), `/register`
   (onboarding), `/api/tenants`, `/api/onboarding`, `/api/health`.
 - **Tenant hanya dari URL.** `server/middleware/00.tenant.ts` me-resolve slug → `event.context.tenant`
   (cache 60 detik, `invalidateTenant(slug)` setelah ubah nama/zona waktu). JANGAN pernah menerima
@@ -46,7 +52,7 @@ OpenMasjid melayani **banyak masjid (tenant)** dari satu deployment dan satu dat
 - **RLS** aktif + `FORCE` di semua tabel data masjid (policy `<table>_tenant_isolation`, fail-closed:
   tanpa `app.tenant_id` → 0 baris). Kolom `tenant_id` default ke `app.tenant_id`, jadi insert di dalam
   `withTenant` otomatis terlabel. App wajib konek dengan role `openmasjid_app`
-  (`server/db/sql/0001_app_role.sql`) — superuser/BYPASSRLS melewati RLS.
+  (`server/db/sql/app-role.sql`) — superuser/BYPASSRLS melewati RLS.
 - **Pengecualian RLS:** tabel auth (`users`, `sessions`, `accounts`, `verifications`) dan `tenants`
   tidak memakai RLS (Better Auth mengaksesnya di luar transaksi tenant). Query ke `users` di handler
   **wajib** filter `eq(users.tenantId, tenant.id)` atau lewat join dari tabel yang ter-RLS.
@@ -54,11 +60,11 @@ OpenMasjid melayani **banyak masjid (tenant)** dari satu deployment dan satu dat
   (pengecekan FK di Postgres tidak tunduk pada RLS). Tabel induk punya `unique(tenant_id, id)`.
   Tabel tenant baru: `tenantId: tenantIdColumn()`, `tenantIsolationPolicy('<table>', t.tenantId)`,
   composite FK, unique per tenant, index diawali `tenant_id`, lalu tambahkan ke
-  `0007_tenants_force_rls`-style migrasi custom untuk `FORCE ROW LEVEL SECURITY`.
+  migrasi custom (seperti `0001_force_rls.sql`) untuk `FORCE ROW LEVEL SECURITY`.
 - **Akun per masjid.** Email unik per `(tenant_id, lower(email))`. Tiap masjid punya instance Better Auth
   sendiri (`getTenantAuth(tenant)`: basePath `/api/t/<slug>/auth`, cookie prefix `om_<slug>`, adapter
   yang men-scope model `user` ke tenant). `getAuthUser()` menolak sesi yang user-nya beda tenant.
-- **Peran:** `admin`, `viewer`, `jamaah`; **pemilik** = `tenants.owner_user_id` (seorang admin).
+- **Peran:** `admin`, `viewer`, `member` (jamaah); **pemilik** = `tenants.owner_user_id` (seorang admin).
   Pengurus baru masuk lewat undangan (`tenant_invitations`, token sekali pakai, hash sha256).
 - **Frontend:** `useApiBase()` → `` `/api/t/${slug}` `` (tipe template literal agar `useFetch` tetap
   ter-infer), `useTenantPath()` → `tp('/admin/…')`, `useTenantContext()` (tenant + user dari
@@ -116,7 +122,8 @@ scripts/                  # seed, seed-*-fake (SEED_TENANT_SLUG), test-isolation
   4. `bun run db:migrate` (pakai `DATABASE_DIRECT_URL`, role owner).
   drizzle-kit tidak selalu mengurutkan constraint dengan benar (mis. composite FK sebelum
   `UNIQUE(tenant_id, id)` yang dirujuknya) — urutkan ulang SQL **sebelum** di-commit.
-  Migrasi data/backfill: `drizzle-kit generate --custom --name …` (lihat `0004_tenants_backfill.sql`).
+  SQL yang tidak bisa diekspresikan drizzle (mis. `FORCE ROW LEVEL SECURITY`): `drizzle-kit generate --custom --name …`
+  (lihat `0001_force_rls.sql`). Aplikasi masih baru: baseline migrasi adalah `0000_init.sql`.
   Jangan pakai `db:push` untuk database bersama/produksi.
 - Konvensi tabel:
   - PK `uuid` `defaultRandom()`.
@@ -165,7 +172,7 @@ scripts/                  # seed, seed-*-fake (SEED_TENANT_SLUG), test-isolation
 - Client: `useAuth()` / `useTenantContext()`; middleware global melindungi `/[tenant]/admin/**`.
   Sembunyikan aksi tulis dari viewer (`isAdmin`) dan menu pengurus dari non-owner (`isOwner`),
   tapi keamanan tetap di server.
-- Masjid baru + pemiliknya: `POST /api/onboarding` (UI `/daftar`), memakai `provisionTenant()` +
+- Masjid baru + pemiliknya: `POST /api/onboarding` (UI `/register`), memakai `provisionTenant()` +
   `createStaffUser()` (`server/utils/tenant-provisioning.ts`). Seed lokal: `bun run db:seed`.
 - Reset password & undangan: belum ada mailer — tautan di-log di server dan undangan ditampilkan
   sekali ke pemilik (**TODO: mailer**). Endpoint di luar Better Auth memakai `rateLimit()`.
@@ -225,7 +232,7 @@ bun run db:seed:events         # kegiatan + jamaah + pendaftar palsu (--clean un
 bun run db:studio
 ```
 
-Postgres lokal: jalankan `server/db/sql/0001_app_role.sql` sekali, lalu `DATABASE_URL` memakai role
+Postgres lokal: jalankan `server/db/sql/app-role.sql` sekali, lalu `DATABASE_URL` memakai role
 `openmasjid_app` dan `DATABASE_DIRECT_URL` memakai role owner (lihat `.env.example`).
 
 ---

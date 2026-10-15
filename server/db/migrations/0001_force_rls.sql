@@ -1,6 +1,6 @@
--- Apply RLS to the table owner too. Superusers and roles with BYPASSRLS still
--- bypass it, so the app MUST connect with a dedicated role
--- (see server/db/sql/0001_app_role.sql).
+-- Row Level Security also applies to the table owner. Superusers and roles
+-- with BYPASSRLS still bypass it, so the app MUST connect with the restricted
+-- role from server/db/sql/app-role.sql. (drizzle-kit cannot express FORCE.)
 ALTER TABLE "mosque_profile" FORCE ROW LEVEL SECURITY;--> statement-breakpoint
 ALTER TABLE "categories" FORCE ROW LEVEL SECURITY;--> statement-breakpoint
 ALTER TABLE "events" FORCE ROW LEVEL SECURITY;--> statement-breakpoint

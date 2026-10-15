@@ -1,6 +1,6 @@
 import { CalculationMethod, Coordinates, Madhab, PrayerTimes, type CalculationParameters } from 'adhan'
 
-export const PRAYER_KEYS = ['subuh', 'terbit', 'dzuhur', 'ashar', 'maghrib', 'isya'] as const
+export const PRAYER_KEYS = ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'] as const
 export type PrayerId = (typeof PRAYER_KEYS)[number]
 export type PrayerMinuteMap = Record<PrayerId, number>
 
@@ -18,12 +18,12 @@ export const PRAYER_METHOD_LABELS: Record<PrayerCalcMethod, string> = {
 }
 
 export const PRAYER_LABELS: Record<PrayerId, { name: string, ar: string }> = {
-  subuh: { name: 'Subuh', ar: 'الفجر' },
-  terbit: { name: 'Terbit', ar: 'الشروق' },
-  dzuhur: { name: 'Dzuhur', ar: 'الظهر' },
-  ashar: { name: 'Ashar', ar: 'العصر' },
+  fajr: { name: 'Subuh', ar: 'الفجر' },
+  sunrise: { name: 'Terbit', ar: 'الشروق' },
+  dhuhr: { name: 'Dzuhur', ar: 'الظهر' },
+  asr: { name: 'Ashar', ar: 'العصر' },
   maghrib: { name: 'Maghrib', ar: 'المغرب' },
-  isya: { name: 'Isya', ar: 'العشاء' },
+  isha: { name: 'Isya', ar: 'العشاء' },
 }
 
 export interface PrayerSettings {
@@ -44,7 +44,7 @@ export interface PrayerTime {
   ar: string
   /** Adzan, `HH:MM` in the mosque timezone. */
   time: string
-  /** Iqamah, `HH:MM` (equal to `time` for `terbit`). */
+  /** Iqamah, `HH:MM` (equal to `time` for `sunrise`). */
   iq: string
   /** ISO timestamps for countdowns. */
   at: string
@@ -98,27 +98,27 @@ export function computePrayerTimes(isoDate: string, s: PrayerSettings): PrayerTi
   const p = params(s.method)
   p.madhab = s.madhab === 'hanafi' ? Madhab.Hanafi : Madhab.Shafi
   p.adjustments = {
-    fajr: s.adjustments.subuh,
-    sunrise: s.adjustments.terbit,
-    dhuhr: s.adjustments.dzuhur,
-    asr: s.adjustments.ashar,
+    fajr: s.adjustments.fajr,
+    sunrise: s.adjustments.sunrise,
+    dhuhr: s.adjustments.dhuhr,
+    asr: s.adjustments.asr,
     maghrib: s.adjustments.maghrib,
-    isha: s.adjustments.isya,
+    isha: s.adjustments.isha,
   }
   // adhan reads the local Y/M/D components of the Date it receives.
   const times = new PrayerTimes(new Coordinates(s.latitude, s.longitude), new Date(y, m - 1, d), p)
   const raw: Record<PrayerId, Date> = {
-    subuh: times.fajr,
-    terbit: times.sunrise,
-    dzuhur: times.dhuhr,
-    ashar: times.asr,
+    fajr: times.fajr,
+    sunrise: times.sunrise,
+    dhuhr: times.dhuhr,
+    asr: times.asr,
     maghrib: times.maghrib,
-    isya: times.isha,
+    isha: times.isha,
   }
 
   return PRAYER_KEYS.map((id) => {
     const at = raw[id]
-    const iqMinutes = id === 'terbit' ? 0 : s.iqamah[id]
+    const iqMinutes = id === 'sunrise' ? 0 : s.iqamah[id]
     const iqAt = new Date(at.getTime() + iqMinutes * 60_000)
     return {
       id,

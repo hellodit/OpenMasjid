@@ -1,5 +1,5 @@
 /**
- * Fake events + jamaah + registrations for local development.
+ * Fake events + members (jamaah) + registrations for local development.
  *   bun run db:seed:events          # insert
  *   bun run db:seed:events --clean  # remove rows created by this script
  * Fake rows are marked with the `[fake]` tag / `@fake.openmasjid.test` emails.
@@ -55,13 +55,13 @@ async function seed() {
 
   const names = ['Hidayat Wibowo', 'Sumarni Lestari', 'Rifki Nugroho', 'Sutopo Hadi', 'Aisyah Rahmani',
     'Bagus Pratama', 'Khairunnisa', 'Iskandar Maulana', 'Faris Akbar', 'Halimah Yusuf']
-  const jamaah = await db
+  const members = await db
     .insert(users)
     .values(names.map((n, i) => ({
       fullName: n,
       email: `${n.toLowerCase().replace(/[^a-z]+/g, '.')}${FAKE_DOMAIN}`,
       phone: `+62 812-0000-${String(1000 + i)}`,
-      role: 'jamaah' as const,
+      role: 'member' as const,
     })))
     .onConflictDoNothing()
     .returning({ id: users.id })
@@ -111,7 +111,7 @@ async function seed() {
     }, admin.id)
 
     if (s.draft) continue
-    const take = jamaah.slice(0, Math.min(jamaah.length, s.cap, 3 + i))
+    const take = members.slice(0, Math.min(members.length, s.cap, 3 + i))
     await db.insert(registrants).values(take.map((u, j) => ({
       eventId: id,
       userId: u.id,
@@ -121,7 +121,7 @@ async function seed() {
       source: 'web' as const,
     })))
   }
-  console.log(`✓ inserted ${specs.length} events, ${jamaah.length} jamaah`)
+  console.log(`✓ inserted ${specs.length} events, ${members.length} members`)
 }
 
 const run = process.argv.includes('--clean') ? clean : seed

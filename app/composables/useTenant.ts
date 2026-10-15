@@ -37,7 +37,7 @@ export interface ContextUser {
   id: string
   email: string
   name: string
-  role: 'admin' | 'viewer' | 'jamaah'
+  role: 'admin' | 'viewer' | 'member'
   isOwner: boolean
 }
 

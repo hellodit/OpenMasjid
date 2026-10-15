@@ -59,7 +59,7 @@ const filtered = computed(() => {
           </p>
           <div class="flex flex-wrap gap-3">
             <UButton
-              to="/daftar"
+              to="/register"
               size="xl"
               color="secondary"
               icon="i-lucide-plus"
@@ -145,7 +145,7 @@ const filtered = computed(() => {
           <p class="text-[14px] text-cms-muted m-0 mb-5">
             Jadilah yang pertama mendaftarkan masjid Anda.
           </p>
-          <UButton to="/daftar" icon="i-lucide-plus" label="Daftarkan Masjid" />
+          <UButton to="/register" icon="i-lucide-plus" label="Daftarkan Masjid" />
         </template>
         <template v-else>
           <p class="font-serif text-[18px] font-semibold text-cms-ink m-0 mb-1">

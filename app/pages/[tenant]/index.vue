@@ -14,7 +14,7 @@ const { data: events, pending: eventsPending } = useFetch(`${api}/public/events`
 const { now, timeHHMM, gregorianDate, hijriDate, zoneLabel } = useDisplayClock(() => mosque.value?.timezone)
 const { prayers, next, sunrise, countdown } = usePrayerSchedule(now)
 
-const masjidName = computed(() => mosque.value?.name ?? 'OpenMasjid')
+const mosqueName = computed(() => mosque.value?.name ?? 'OpenMasjid')
 const addressMain = computed(() => mosque.value?.addressLine || mosque.value?.city || null)
 const addressSub = computed(() => {
   if (!mosque.value) return null
@@ -48,12 +48,12 @@ const socials = computed(() => {
 })
 
 useHead({
-  title: () => `${masjidName.value} — OpenMasjid`,
+  title: () => `${mosqueName.value} — OpenMasjid`,
   htmlAttrs: { lang: 'id' },
   meta: [
     { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
     { name: 'theme-color', content: '#1f3b2d' },
-    { name: 'description', content: () => `Profil, jadwal sholat, dan kegiatan ${masjidName.value}.` },
+    { name: 'description', content: () => `Profil, jadwal sholat, dan kegiatan ${mosqueName.value}.` },
   ],
 })
 
@@ -105,7 +105,7 @@ function eventSchedule(ev: PublicEvent): string {
         </div>
         <div class="min-w-0 flex-1">
           <div class="font-serif text-[15px] font-semibold leading-tight truncate">
-            {{ masjidName }}
+            {{ mosqueName }}
           </div>
           <div class="text-[11px] text-cms-muted truncate">
             OpenMasjid · Profil & Kegiatan
@@ -150,7 +150,7 @@ function eventSchedule(ev: PublicEvent): string {
           {{ mosque.arabicName }}
         </div>
         <h1 class="font-serif text-[28px] sm:text-[34px] leading-[1.15] font-semibold mb-3">
-          {{ masjidName }}
+          {{ mosqueName }}
         </h1>
         <p v-if="mosque?.tagline" class="text-[14.5px] leading-relaxed text-white/80 max-w-md">
           {{ mosque.tagline }}
@@ -521,7 +521,7 @@ function eventSchedule(ev: PublicEvent): string {
           </div>
           <div>
             <div class="font-serif text-[16px] font-semibold text-white leading-tight">
-              {{ masjidName }}
+              {{ mosqueName }}
             </div>
             <div class="text-[11px] uppercase tracking-[1.2px] text-cms-gold-soft mt-0.5">
               Powered by OpenMasjid

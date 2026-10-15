@@ -15,7 +15,7 @@ import { timestamps } from './_columns'
 import { users } from './users'
 
 import { tenantIdColumn, tenantIsolationPolicy } from './tenants'
-export type PrayerKey = 'subuh' | 'terbit' | 'dzuhur' | 'ashar' | 'maghrib' | 'isya'
+export type PrayerKey = 'fajr' | 'sunrise' | 'dhuhr' | 'asr' | 'maghrib' | 'isha'
 export type PrayerMinutes = Record<PrayerKey, number>
 
 export const mosqueProfile = pgTable(
@@ -56,12 +56,12 @@ export const mosqueProfile = pgTable(
     prayerAdjustments: jsonb('prayer_adjustments')
       .$type<PrayerMinutes>()
       .notNull()
-      .default({ subuh: 0, terbit: 0, dzuhur: 0, ashar: 0, maghrib: 0, isya: 0 }),
+      .default({ fajr: 0, sunrise: 0, dhuhr: 0, asr: 0, maghrib: 0, isha: 0 }),
     /** Minutes between adzan and iqamah. */
     iqamahOffsets: jsonb('iqamah_offsets')
       .$type<PrayerMinutes>()
       .notNull()
-      .default({ subuh: 10, terbit: 0, dzuhur: 10, ashar: 10, maghrib: 5, isya: 10 }),
+      .default({ fajr: 10, sunrise: 0, dhuhr: 10, asr: 10, maghrib: 5, isha: 10 }),
 
     updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
     ...timestamps,

@@ -131,12 +131,12 @@ const { data: categories } = await useFetch(`${api}/admin/categories`, { key: 'a
 const pickable = computed(() => (categories.value ?? []).filter(c => c.isActive || c.id === state.categoryId))
 
 const steps = [
-  { id: 'informasi', t: 'Informasi Dasar', d: 'Judul, kategori, deskripsi' },
-  { id: 'jadwal', t: 'Jadwal & Lokasi', d: 'Waktu, tempat, kapasitas' },
-  { id: 'pembicara', t: 'Pembicara', d: 'Ustadz / narasumber' },
+  { id: 'basics', t: 'Informasi Dasar', d: 'Judul, kategori, deskripsi' },
+  { id: 'schedule', t: 'Jadwal & Lokasi', d: 'Waktu, tempat, kapasitas' },
+  { id: 'speakers', t: 'Pembicara', d: 'Ustadz / narasumber' },
   { id: 'agenda', t: 'Susunan Acara', d: 'Urutan kegiatan' },
   { id: 'banner', t: 'Banner', d: 'Poster kegiatan' },
-  { id: 'pengaturan', t: 'Pengaturan', d: 'Pendaftaran & publikasi' },
+  { id: 'settings', t: 'Pengaturan', d: 'Pendaftaran & publikasi' },
 ]
 
 const statusItems = computed(() => [
@@ -209,7 +209,7 @@ function onError(event: FormErrorEvent) {
     >
       <!-- Section 1: Basic -->
       <AdminFormSection
-        id="informasi"
+        id="basics"
         class="scroll-mt-4"
         title="Informasi Dasar"
         description="Tampilkan kegiatan secara jelas. Judul yang baik singkat namun deskriptif."
@@ -241,7 +241,7 @@ function onError(event: FormErrorEvent) {
 
       <!-- Section 2: Schedule & location -->
       <AdminFormSection
-        id="jadwal"
+        id="schedule"
         class="scroll-mt-4"
         title="Jadwal & Lokasi"
         description="Tentukan kapan dan di mana kegiatan akan diselenggarakan."
@@ -283,7 +283,7 @@ function onError(event: FormErrorEvent) {
 
       <!-- Section 3: Speakers -->
       <AdminFormSection
-        id="pembicara"
+        id="speakers"
         class="scroll-mt-4"
         title="Pembicara / Narasumber"
         description="Nama dan jabatan ustadz atau narasumber (maksimal 10)."
@@ -414,7 +414,7 @@ function onError(event: FormErrorEvent) {
 
       <!-- Section 6: Settings -->
       <AdminFormSection
-        id="pengaturan"
+        id="settings"
         class="scroll-mt-4"
         title="Pengaturan & Publikasi"
         description="Atur pendaftaran, visibilitas, dan saluran tampilan kegiatan."

@@ -29,7 +29,7 @@ const stepperUi = { root: 'w-[132px]', base: 'font-mono text-[12.5px] font-semib
           <td :class="td(i)">
             <div class="flex items-center gap-3">
               <div class="w-[34px] h-[34px] rounded-[9px] bg-cms-green-100 text-cms-green-700 grid place-items-center shrink-0">
-                <Icon :name="id === 'terbit' ? 'lucide:sunrise' : 'lucide:book-marked'" size="16" />
+                <Icon :name="id === 'sunrise' ? 'lucide:sunrise' : 'lucide:book-marked'" size="16" />
               </div>
               <div>
                 <div class="font-semibold text-[13.5px]">{{ PRAYER_LABELS[id].name }}</div>
@@ -60,7 +60,7 @@ const stepperUi = { root: 'w-[132px]', base: 'font-mono text-[12.5px] font-semib
             </UFormField>
           </td>
           <td :class="td(i)">
-            <span v-if="id === 'terbit'" class="text-cms-muted text-[12px]">—</span>
+            <span v-if="id === 'sunrise'" class="text-cms-muted text-[12px]">—</span>
             <UFormField v-else :name="`iqamahOffsets.${id}`">
               <UInputNumber
                 v-model="iqamah[id]"
@@ -73,7 +73,7 @@ const stepperUi = { root: 'w-[132px]', base: 'font-mono text-[12.5px] font-semib
             </UFormField>
           </td>
           <td :class="[td(i), 'text-right font-mono text-[13px] text-cms-ink-2']">
-            {{ id === 'terbit' ? '—' : (timeOf.get(id)?.iq ?? '—') }}
+            {{ id === 'sunrise' ? '—' : (timeOf.get(id)?.iq ?? '—') }}
           </td>
         </tr>
       </tbody>

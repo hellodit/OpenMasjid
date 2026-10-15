@@ -5,7 +5,7 @@ const { tenant, slug } = useTenantContext()
 const tp = useTenantPath()
 
 const roleLabel = computed(() =>
-  isOwner.value ? 'Pemilik masjid' : ({ admin: 'Admin DKM', viewer: 'Pengurus (lihat saja)', jamaah: 'Jamaah' } as Record<string, string>)[user.value?.role ?? ''] ?? '')
+  isOwner.value ? 'Pemilik masjid' : ({ admin: 'Admin DKM', viewer: 'Pengurus (lihat saja)', member: 'Jamaah' } as Record<string, string>)[user.value?.role ?? ''] ?? '')
 const initialsOf = (name: string) =>
   name.split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase()
 
@@ -22,19 +22,19 @@ interface NavItem {
 
 const manage: NavItem[] = [
   { id: 'dashboard', name: 'Dashboard', icon: 'lucide:layout-grid', path: '/admin' },
-  { id: 'kegiatan',  name: 'Kegiatan',  icon: 'lucide:calendar',
+  { id: 'events',  name: 'Kegiatan',  icon: 'lucide:calendar',
     path: '/admin/events', matches: ['/admin/events'] },
-  { id: 'kategori',  name: 'Kategori',  icon: 'lucide:tag', path: '/admin/categories' },
-  { id: 'pendaftar', name: 'Pendaftar', icon: 'lucide:users', path: '/admin/registrants' },
+  { id: 'categories',  name: 'Kategori',  icon: 'lucide:tag', path: '/admin/categories' },
+  { id: 'registrants', name: 'Pendaftar', icon: 'lucide:users', path: '/admin/registrants' },
   { id: 'cashbook',  name: 'Buku Kas',  icon: 'lucide:wallet',
     path: '/admin/cashbook', matches: ['/admin/cashbook'] },
 ]
 
 const system = computed<NavItem[]>(() => [
-  { id: 'pengaturan', name: 'Pengaturan',   icon: 'lucide:settings', path: '/admin/settings' },
-  ...(isOwner.value ? [{ id: 'pengurus', name: 'Pengurus', icon: 'lucide:user-cog', path: '/admin/team' }] : []),
-  { id: 'tv',         name: 'Layar TV',      icon: 'lucide:monitor', path: '/display' },
-  { id: 'transparansi', name: 'Transparansi', icon: 'lucide:globe', path: '/transparency' },
+  { id: 'settings', name: 'Pengaturan',   icon: 'lucide:settings', path: '/admin/settings' },
+  ...(isOwner.value ? [{ id: 'team', name: 'Pengurus', icon: 'lucide:user-cog', path: '/admin/team' }] : []),
+  { id: 'display',         name: 'Layar TV',      icon: 'lucide:monitor', path: '/display' },
+  { id: 'transparency', name: 'Transparansi', icon: 'lucide:globe', path: '/transparency' },
 ])
 
 /** Path relative to the mosque (/al-hikmah/admin/events → /admin/events). */

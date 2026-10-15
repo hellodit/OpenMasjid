@@ -40,13 +40,13 @@ onBeforeUnmount(() => {
   if (poll) clearInterval(poll)
 })
 
-const masjidName = computed(() => mosque.value?.name ?? 'OpenMasjid')
-const masjidAddress = computed(() =>
+const mosqueName = computed(() => mosque.value?.name ?? 'OpenMasjid')
+const mosqueAddress = computed(() =>
   [mosque.value?.addressLine, mosque.value?.city].filter(Boolean).join(' · '),
 )
 
 useHead({
-  title: () => `${masjidName.value} — TV Display`,
+  title: () => `${mosqueName.value} — TV Display`,
   htmlAttrs: { lang: 'id' },
   bodyAttrs: { class: 'overflow-hidden bg-tv-bg text-tv-ink font-sans' },
 })
@@ -68,7 +68,7 @@ const announcements = computed(() => {
   })
   if (items.length) return items
   return [{
-    prefix: `Selamat datang di ${masjidName.value}.`,
+    prefix: `Selamat datang di ${mosqueName.value}.`,
     body: mosque.value?.tagline ?? 'Mari luruskan dan rapatkan shaf.',
   }]
 })
@@ -99,8 +99,8 @@ const infoItems = computed(() => {
     <KhatamBackground />
 
     <TopBar
-      :name="masjidName"
-      :address="masjidAddress"
+      :name="mosqueName"
+      :address="mosqueAddress"
       :time="timeFull"
     />
 

@@ -16,10 +16,10 @@ let timer: ReturnType<typeof setInterval> | undefined
 onMounted(() => (timer = setInterval(() => (now.value = Date.now()), 30_000)))
 onBeforeUnmount(() => clearInterval(timer))
 
-const fardhu = computed(() => props.prayers.filter(p => p.id !== 'terbit'))
+const obligatory = computed(() => props.prayers.filter(p => p.id !== 'sunrise'))
 const isToday = computed(() => props.date === dateInTimeZone(props.timezone, new Date(now.value)))
 
-const next = computed(() => isToday.value ? fardhu.value.find(p => new Date(p.at).getTime() > now.value) : undefined)
+const next = computed(() => isToday.value ? obligatory.value.find(p => new Date(p.at).getTime() > now.value) : undefined)
 
 const countdown = computed(() => {
   if (!next.value) return isToday.value ? 'menunggu Subuh esok hari' : `jadwal ${formatDate(props.date)}`
@@ -45,15 +45,15 @@ const iqMinutes = (p: PrayerTime) => Math.round((new Date(p.iqAt).getTime() - ne
 
       <div class="bg-white/5 border border-white/15 rounded-[10px] px-3.5 py-3 text-center mb-3">
         <div class="text-[10.5px] tracking-[0.6px] uppercase text-cms-gold font-semibold">
-          Berikutnya · {{ next?.name ?? fardhu[0]?.name ?? '—' }}
+          Berikutnya · {{ next?.name ?? obligatory[0]?.name ?? '—' }}
         </div>
-        <div class="font-serif text-[38px] font-bold tracking-[-1px] my-0.5">{{ next?.time ?? fardhu[0]?.time ?? '--:--' }}</div>
+        <div class="font-serif text-[38px] font-bold tracking-[-1px] my-0.5">{{ next?.time ?? obligatory[0]?.time ?? '--:--' }}</div>
         <div class="font-mono text-[11px] text-[oklch(0.88_0.03_155)] tracking-[0.4px]">— {{ countdown }}</div>
       </div>
 
       <div class="grid grid-cols-5 gap-1 text-center">
         <div
-          v-for="c in fardhu"
+          v-for="c in obligatory"
           :key="c.id"
           :class="[
             'rounded-lg py-2 px-1 border',

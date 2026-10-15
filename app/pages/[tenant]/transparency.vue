@@ -7,7 +7,7 @@ const api = useApiBase()
 const tp = useTenantPath()
 
 const { data: mosque } = useFetch(`${api}/public/mosque`, { key: 'public-mosque' })
-const masjidName = computed(() => mosque.value?.name ?? 'Masjid')
+const mosqueName = computed(() => mosque.value?.name ?? 'Masjid')
 
 useHead({ title: () => `Transparansi Keuangan — ${mosque.value?.name ?? 'OpenMasjid'}` })
 
@@ -45,7 +45,7 @@ async function copyLink() {
             Transparansi Keuangan
           </div>
           <h1 class="font-serif text-[24px] sm:text-[28px] font-semibold text-stone-800 mt-0.5 m-0">
-            Buku Kas {{ masjidName }}
+            Buku Kas {{ mosqueName }}
           </h1>
           <NuxtLink :to="tp('/')" class="text-[12.5px] text-stone-500 hover:text-emerald-700">
             ← Kembali ke halaman masjid

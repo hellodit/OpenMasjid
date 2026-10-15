@@ -5,57 +5,15 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1778978229585,
-      "tag": "0000_awesome_quicksilver",
+      "when": 1792028696129,
+      "tag": "0000_init",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1779056303505,
-      "tag": "0001_salty_marvex",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1792024867083,
-      "tag": "0002_better_auth_relations",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1792027340166,
-      "tag": "0003_tenants_expand",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1792027368077,
-      "tag": "0004_tenants_backfill",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1792027411027,
-      "tag": "0005_tenants_contract",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1792027439246,
-      "tag": "0006_tenants_rls",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1792027458623,
-      "tag": "0007_tenants_force_rls",
+      "when": 1792028697002,
+      "tag": "0001_force_rls",
       "breakpoints": true
     }
   ]

@@ -8,12 +8,12 @@ const minutes = (min: number, max: number) => z.number().int().min(min).max(max)
 
 const prayerMinutes = (min: number, max: number) =>
   z.object({
-    subuh: minutes(min, max),
-    terbit: minutes(min, max),
-    dzuhur: minutes(min, max),
-    ashar: minutes(min, max),
+    fajr: minutes(min, max),
+    sunrise: minutes(min, max),
+    dhuhr: minutes(min, max),
+    asr: minutes(min, max),
     maghrib: minutes(min, max),
-    isya: minutes(min, max),
+    isha: minutes(min, max),
   })
 
 const optionalUrl = z.url('URL tidak valid').nullish().or(z.literal('').transform(() => null))

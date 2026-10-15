@@ -56,21 +56,21 @@ const choice = <T,>(...items: Array<[T, number]>): T => {
 const toIsoDate = (d: Date) => d.toISOString().slice(0, 10)
 
 async function ensureAccounts(): Promise<AccountRow[]> {
+  // Transfers need at least two accounts: add any missing default account by name.
   const existing = await db.query.cashAccounts.findMany({
+    where: isNull(cashAccounts.deletedAt),
+    columns: { id: true, name: true, type: true },
+  })
+  const missing = DEFAULT_ACCOUNTS.filter((d) => !existing.some((e) => e.name === d.name))
+  if (missing.length) {
+    await db.insert(cashAccounts).values(missing)
+    console.log(`• Created ${missing.length} default cash account(s).`)
+  }
+  return db.query.cashAccounts.findMany({
     where: isNull(cashAccounts.deletedAt),
     columns: { id: true, name: true, type: true },
     orderBy: cashAccounts.sortOrder,
   })
-  if (existing.length > 0) {
-    console.log(`✓ Found ${existing.length} existing cash account(s) — reusing.`)
-    return existing
-  }
-  console.log('• No cash accounts found — creating defaults.')
-  const inserted = await db
-    .insert(cashAccounts)
-    .values(DEFAULT_ACCOUNTS)
-    .returning({ id: cashAccounts.id, name: cashAccounts.name, type: cashAccounts.type })
-  return inserted
 }
 
 async function loadCategories(): Promise<{ income: CategoryRow[]; expense: CategoryRow[] }> {
@@ -97,7 +97,7 @@ async function pickCreator(): Promise<string> {
   const anyUser = await db.query.users.findFirst({ where: eq(users.tenantId, tenant!.id), columns: { id: true } })
   if (anyUser) return anyUser.id
 
-  console.log('• Tabel users kosong — bikin dummy admin buat createdBy.')
+  console.log('• No users in this mosque — creating a placeholder user for createdBy.')
   const [bootstrap] = await db
     .insert(users)
     .values({
@@ -244,8 +244,8 @@ function buildTransactions(
   }
 
   // Kajian expenses (~3-4 events)
-  const kajianCount = randInt(3, 4)
-  for (let i = 0; i < kajianCount; i++) {
+  const studyEventCount = randInt(3, 4)
+  for (let i = 0; i < studyEventCount; i++) {
     const day = new Date(start)
     day.setDate(day.getDate() + randInt(0, PERIOD_DAYS - 1))
     const slug = choice<'keg-kajian' | 'keg-bukber'>(['keg-kajian', 4], ['keg-bukber', 1])
@@ -311,7 +311,7 @@ async function main() {
     return
   }
 
-  console.log(`Generating ${PERIOD_DAYS} hari fake cashbook data…`)
+  console.log(`Generating ${PERIOD_DAYS} days of fake cashbook data…`)
   const accounts = await ensureAccounts()
   const cats = await loadCategories()
   const createdBy = await pickCreator()
@@ -322,19 +322,19 @@ async function main() {
   const income = rows.filter((r) => r.type === 'income').reduce((a, r) => a + Number(r.amount), 0)
   const expense = rows.filter((r) => r.type === 'expense').reduce((a, r) => a + Number(r.amount), 0)
   const transfer = rows.filter((r) => r.type === 'transfer').length
-  console.log(`  • ${rows.length} transaksi total`)
+  console.log(`  • ${rows.length} transactions total`)
   console.log(`  • Income  : Rp ${income.toLocaleString('id-ID')}`)
   console.log(`  • Expense : Rp ${expense.toLocaleString('id-ID')}`)
-  console.log(`  • Transfer: ${transfer} kali`)
+  console.log(`  • Transfers: ${transfer}`)
 
   if (dryRun) {
-    console.log('— dry run, tidak insert ke DB.')
+    console.log('— dry run, nothing inserted.')
     return
   }
 
   const inserted = await db.insert(transactions).values(rows).returning({ id: transactions.id })
   console.log(`✓ Inserted ${inserted.length} transactions.`)
-  console.log(`  Tip: cleanup dengan \`tsx scripts/seed-cashbook-fake.ts --clean\``)
+  console.log(`  Tip: clean up with \`bun run db:seed:cashbook --clean\``)
 }
 
 withTenant(tenant.id, async (tx) => {

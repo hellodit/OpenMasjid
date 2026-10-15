@@ -18,8 +18,8 @@ export function prayerSettingsFrom(row: ProfileRow | null): PrayerSettings {
     timezone: row?.timezone || 'Asia/Jakarta',
     method: row?.prayerMethod ?? 'kemenag',
     madhab: row?.asrMadhab ?? 'shafi',
-    adjustments: row?.prayerAdjustments ?? { subuh: 0, terbit: 0, dzuhur: 0, ashar: 0, maghrib: 0, isya: 0 },
-    iqamah: row?.iqamahOffsets ?? { subuh: 10, terbit: 0, dzuhur: 10, ashar: 10, maghrib: 5, isya: 10 },
+    adjustments: row?.prayerAdjustments ?? { fajr: 0, sunrise: 0, dhuhr: 0, asr: 0, maghrib: 0, isha: 0 },
+    iqamah: row?.iqamahOffsets ?? { fajr: 10, sunrise: 0, dhuhr: 10, asr: 10, maghrib: 5, isha: 10 },
   }
 }
 

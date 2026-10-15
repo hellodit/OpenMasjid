@@ -27,8 +27,8 @@ const year = new Date().getFullYear()
         </NuxtLink>
 
         <UButton
-          v-if="route.path !== '/daftar'"
-          to="/daftar"
+          v-if="route.path !== '/register'"
+          to="/register"
           icon="i-lucide-plus"
           label="Daftarkan Masjid"
           class="shrink-0"

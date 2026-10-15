@@ -1,6 +1,6 @@
 # Arsitektur Multi-Tenant — OpenMasjid
 
-> **Status: fase 0–5 sudah diimplementasikan** (skema + backfill, scoping API, RLS, uji isolasi,
+> **Status: fase 0–5 sudah diimplementasikan** (skema, scoping API, RLS, uji isolasi,
 > onboarding, undangan pengurus). Fase 6 (console platform, paket & billing) belum.
 > Bagian "Keputusan" di bawah adalah sumber kebenaran; bagian setelahnya adalah rancangan awal yang
 > sudah disesuaikan dengan keputusan tersebut. Ringkasan praktis untuk kontributor ada di
@@ -31,8 +31,8 @@
 | Komponen | Lokasi |
 |---|---|
 | Skema tenant, helper kolom & policy | `server/db/schema/tenants.ts` (`tenantIdColumn`, `tenantIsolationPolicy`) |
-| Migrasi | `0003_tenants_expand` → `0004_tenants_backfill` (custom) → `0005_tenants_contract` → `0006_tenants_rls` → `0007_tenants_force_rls` (custom) |
-| Role DB aplikasi | `server/db/sql/0001_app_role.sql` (`openmasjid_app`, NOBYPASSRLS) |
+| Migrasi | `0000_init` (skema + RLS policy) → `0001_force_rls` (custom). Aplikasi baru: tidak ada backfill data lama. |
+| Role DB aplikasi | `server/db/sql/app-role.sql` (`openmasjid_app`, NOBYPASSRLS) |
 | Resolusi tenant | `server/middleware/00.tenant.ts`, `server/utils/tenant.ts` |
 | Transaksi tenant | `withTenant()` di `server/utils/db.ts` |
 | Auth per masjid & guard | `server/utils/auth.ts` (`getTenantAuth`, `defineTenantHandler`) |
@@ -349,7 +349,7 @@ export async function withTenant<T>(tenantId: string, fn: (tx: Tx) => Promise<T>
 ## 10. Operasional
 
 - **Migrasi skema**: satu migrasi untuk semua tenant (keunggulan shared schema). Migrasi berat harus
-  backward-compatible (expand → backfill → contract).
+  backward-compatible (expand → migrasi data → contract).
 - **Backup**: PITR level database (Supabase). Restore per tenant dilakukan dengan "ekspor dari snapshot":
   restore ke DB sementara, lalu `COPY … WHERE tenant_id = $1` balik ke produksi. Sediakan skrip sebelum
   ada pelanggan berbayar.
@@ -365,20 +365,11 @@ export async function withTenant<T>(tenantId: string, fn: (tx: Tx) => Promise<T>
 
 ---
 
-## 11. Rencana migrasi dari versi single-tenant
+## 11. Rencana migrasi
 
-| Fase | Isi | Keluaran |
-|---|---|---|
-| **0. Fondasi skema** | Tabel `tenants`, `tenant_members`, `tenant_domains`; rename `mosque_profile` → `mosque_profiles` (+`tenant_id`, hapus CHECK singleton); tambah `tenant_id` **nullable** ke semua tabel tenant-scoped | Migrasi 0003 (expand) |
-| **1. Backfill** | Buat 1 tenant dari profil masjid yang ada (`id` = singleton id lama). `UPDATE … SET tenant_id = <id>`. User `role=admin/viewer` → `tenant_members` (`admin`→`owner`/`admin`, `viewer`→`viewer`) | Skrip `scripts/migrate-to-multitenant.ts` (idempoten) |
-| **2. Kunci integritas** | `tenant_id SET NOT NULL`; ganti unique global → `(tenant_id, …)`; tambah `unique(tenant_id, id)` + composite FK; index diawali `tenant_id` | Migrasi 0004 (contract) |
-| **3. Aplikasi** | Middleware tenant, `requireTenantRole`, `withTenant`, semua handler & skema Zod disesuaikan; `getMosqueProfile()` → per tenant; cache key per tenant; plugin organization Better Auth | Kode, test isolasi |
-| **4. RLS** | Role DB `openmasjid_app` (tanpa BYPASSRLS), `pgPolicy` + `ENABLE/FORCE RLS` di semua tabel tenant; ganti `DATABASE_URL` ke role baru | Migrasi 0005 |
-| **5. Self-service** | Onboarding, undangan pengurus, switcher masjid, pairing TV, domain kustom | Fitur |
-| **6. Platform** | Console superadmin, paket & billing, ekspor/hapus tenant | Fitur |
-
-Fase 0–4 bisa dirilis tanpa mengubah perilaku untuk masjid yang sudah ada, karena satu tenant hasil
-backfill tetap bekerja di domain lama, yang dipetakan lewat `tenant_domains`.
+Tidak berlaku: OpenMasjid adalah aplikasi baru tanpa data produksi single-tenant, jadi skema
+multi-tenant langsung menjadi baseline (`0000_init`). Tidak ada backfill. Perubahan skema berikutnya
+tetap mengikuti pola expand → contract agar aman untuk tenant yang sudah ada.
 
 ---
 

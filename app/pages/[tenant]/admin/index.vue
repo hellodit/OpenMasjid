@@ -34,7 +34,7 @@ const heroDate = computed(() => {
 
 // Highlight the prayer whose time has started most recently (sunrise excluded).
 const prayers = computed(() => {
-  const list = (prayer.value?.prayers ?? []).filter(p => p.id !== 'terbit')
+  const list = (prayer.value?.prayers ?? []).filter(p => p.id !== 'sunrise')
   const now = Date.now()
   let current = -1
   list.forEach((p, i) => {

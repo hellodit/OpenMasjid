@@ -70,7 +70,7 @@ function createTenantAuth(tenant: Pick<TenantContext, 'id' | 'slug'>) {
       fields: { name: 'fullName' },
       additionalFields: {
         tenantId: { type: 'string', required: false, input: false },
-        role: { type: 'string', required: false, defaultValue: 'jamaah', input: false },
+        role: { type: 'string', required: false, defaultValue: 'member', input: false },
         phone: { type: 'string', required: false },
         isActive: { type: 'boolean', required: false, defaultValue: true, input: false },
       },

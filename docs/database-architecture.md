@@ -107,7 +107,7 @@ Profil masjid. Hanya satu baris — dipastikan via constraint.
 > Kontak (telepon/email/WA/website) dan tautan media sosial sekarang menjadi kolom langsung di `mosque_profile` — single-mosque tidak butuh tabel multi-baris terpisah.
 
 ### `users`
-Semua akun di aplikasi — internal DKM (`admin`/`viewer`) **maupun** jamaah biasa (`jamaah`). Autentikasi (login, password reset, session) ditangani oleh **Better Auth** — tabel ini adalah model `user` Better Auth (`name` → `full_name`); session/credential disimpan di tabel `sessions`, `accounts`, `verifications`.
+Semua akun di aplikasi — internal DKM (`admin`/`viewer`) **maupun** jamaah biasa (`member`). Autentikasi (login, password reset, session) ditangani oleh **Better Auth** — tabel ini adalah model `user` Better Auth (`name` → `full_name`); session/credential disimpan di tabel `sessions`, `accounts`, `verifications`.
 
 | Kolom | Tipe | Catatan |
 |-------|------|---------|
@@ -117,7 +117,7 @@ Semua akun di aplikasi — internal DKM (`admin`/`viewer`) **maupun** jamaah bia
 | `email` | `citext` UNIQUE | unik global |
 | `full_name` | `text` NOT NULL | |
 | `phone` | `text` NULL | |
-| `role` | `enum('admin','viewer','jamaah')` NOT NULL DEFAULT `'jamaah'` | peran user — lihat [matriks di bawah](#role--hak-akses) |
+| `role` | `enum('admin','viewer','member')` NOT NULL DEFAULT `'member'` | peran user — lihat [matriks di bawah](#role--hak-akses) |
 | `avatar_asset_id` | `uuid` FK NULL | |
 | `last_login_at` | `timestamptz` NULL | |
 | `is_active` | `boolean` DEFAULT true | nonaktifkan tanpa hapus |
@@ -137,13 +137,13 @@ Tiga peran, dari yang paling tinggi ke paling rendah:
 |------|-----------|-----------|
 | `admin` | Pengurus DKM. | CRUD seluruh entitas CMS: `mosque_profile`, `users`, `events`, `categories`, `tags`, `registrants`, `announcements`, `prayer_settings`, `prayer_adjustments`, `prayer_overrides`, `display_settings`, `media_assets`. |
 | `viewer` | Anggota DKM yang hanya pantau statistik. | Read-only seluruh halaman admin. Tidak ada write. |
-| `jamaah` | Jamaah biasa yang ingin daftar event masjid. | Login, lihat & daftar event publik, lihat riwayat kehadiran pribadi, ubah profil sendiri. Tidak punya akses CMS. |
+| `member` | Jamaah biasa yang ingin daftar event masjid. | Login, lihat & daftar event publik, lihat riwayat kehadiran pribadi, ubah profil sendiri. Tidak punya akses CMS. |
 
 **Constraint**:
 - `CHECK` di aplikasi: minimal 1 user `is_active = true` dengan `role = 'admin'` setiap saat.
 - Hanya `admin` yang boleh mengubah `users.role` user lain.
 - User tidak boleh mengubah `role` dirinya sendiri.
-- Default registrasi publik membuat user dengan `role = 'jamaah'`. Promosi ke role admin harus eksplisit oleh `admin` lain.
+- Default registrasi publik membuat user dengan `role = 'member'`. Promosi ke role admin harus eksplisit oleh `admin` lain.
 
 ---
 
@@ -263,11 +263,11 @@ Catatan kehadiran jamaah di sebuah event. Wajib login — data identitas (nama, 
 | `sync_source` | `text` NULL | "Kemenag RI" |
 
 ### `prayer_adjustments`
-Penyesuaian per sholat (menit offset adzan & iqamat). 6 baris: subuh, terbit, dzuhur, ashar, maghrib, isya.
+Penyesuaian per sholat (menit offset adzan & iqamat). 6 baris: fajr, sunrise, dhuhr, asr, maghrib, isha.
 
 | Kolom | Tipe |
 |-------|------|
-| `prayer` | `enum('subuh','terbit','dzuhur','ashar','maghrib','isya')` PRIMARY KEY |
+| `prayer` | `enum('fajr','sunrise','dhuhr','asr','maghrib','isha')` PRIMARY KEY |
 | `adzan_offset_min` | `smallint` DEFAULT 0 |
 | `iqamah_offset_min` | `smallint` NULL |
 
@@ -278,7 +278,7 @@ Override manual jadwal pada tanggal tertentu (lebaran, sholat khusus). Sub-bagia
 |-------|------|
 | `id` | `uuid` PK |
 | `for_date` | `date` |
-| `prayer` | `enum('subuh','terbit','dzuhur','ashar','maghrib','isya')` |
+| `prayer` | `enum('fajr','sunrise','dhuhr','asr','maghrib','isha')` |
 | `adzan_at` | `time` |
 | `iqamah_at` | `time` NULL |
 | `note` | `text` |
@@ -362,8 +362,8 @@ Berikut query "kritis" yang sering dipanggil dan index pendukungnya:
 -- contoh deklarasi enum tipe-aman
 CREATE TYPE event_status     AS ENUM ('draft','published','ongoing','full','archived');
 CREATE TYPE registrant_source AS ENUM ('web','qr','admin');
-CREATE TYPE prayer_name      AS ENUM ('subuh','terbit','dzuhur','ashar','maghrib','isya');
-CREATE TYPE user_role        AS ENUM ('admin','viewer','jamaah');
+CREATE TYPE prayer_name      AS ENUM ('fajr','sunrise','dhuhr','asr','maghrib','isha');
+CREATE TYPE user_role        AS ENUM ('admin','viewer','member');
 ```
 
 Constraint check yang wajib:

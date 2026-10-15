@@ -20,7 +20,7 @@
 
 OpenMasjid adalah platform **multi-masjid**: satu deployment melayani banyak masjid, masing-masing
 di alamatnya sendiri (`openmasjid.id/<nama-masjid>`) dengan data, akun, dan pengurus yang terisolasi
-penuh (Row Level Security PostgreSQL). Masjid baru bisa mendaftar sendiri di `/daftar`.
+penuh (Row Level Security PostgreSQL). Masjid baru bisa mendaftar sendiri di `/register`.
 
 Setiap masjid mendapatkan tiga permukaan utama:
 
@@ -191,7 +191,7 @@ Dibangun dengan **Nuxt 4 + Nuxt UI v4**, **PostgreSQL** via **Drizzle ORM**, val
 | Rute | Mode | Deskripsi |
 |------|------|-----------|
 | `/` | Publik | Landing OpenMasjid + direktori masjid |
-| `/daftar` | Publik | Daftarkan masjid baru (membuat akun pemilik) |
+| `/register` | Publik | Daftarkan masjid baru (membuat akun pemilik) |
 | `/<masjid>` | Publik | Portal jamaah — profil, jadwal sholat & kegiatan |
 | `/<masjid>/display` | Publik TV | Tampilan layar besar |
 | `/<masjid>/transparency` | Publik | Ringkasan keuangan untuk jamaah |
@@ -223,7 +223,7 @@ Peran: `admin` (kelola data), `viewer` (lihat saja), dan **pemilik** (admin yang
    ```bash
    bun run db:migrate   # terapkan migrasi (pakai DATABASE_DIRECT_URL / role owner)
    # sekali saja: buat role aplikasi tanpa BYPASSRLS, lalu pakai di DATABASE_URL
-   psql "$DATABASE_DIRECT_URL" -f server/db/sql/0001_app_role.sql
+   psql "$DATABASE_DIRECT_URL" -f server/db/sql/app-role.sql
    bun run db:seed      # satu masjid contoh + akun pemiliknya
    # opsional, data contoh:
    bun run db:seed:events
@@ -234,7 +234,7 @@ Peran: `admin` (kelola data), `viewer` (lihat saja), dan **pemilik** (admin yang
    bun run dev
    ```
    Aplikasi tersedia di `http://localhost:3000`; masjid contoh ada di `/<SEED_TENANT_SLUG>`, CMS-nya di
-   `/<SEED_TENANT_SLUG>/auth/login` dengan akun `SEED_ADMIN_*`. Masjid lain bisa didaftarkan di `/daftar`.
+   `/<SEED_TENANT_SLUG>/auth/login` dengan akun `SEED_ADMIN_*`. Masjid lain bisa didaftarkan di `/register`.
 
 Pemeriksaan kualitas & build production:
 
@@ -245,14 +245,6 @@ bun run test:isolation   # uji isolasi antar masjid (server harus jalan)
 bun run build && bun run preview
 ```
 
-> **Upgrade dari versi single-masjid**: migrasi `0003`–`0007` memindahkan seluruh data lama ke satu
-> masjid (slug dari profil masjid lama) dan menjadikan admin pertama sebagai pemilik. Setelah itu
-> URL berubah: `/admin` → `/<slug>/admin`. Jalankan juga `server/db/sql/0001_app_role.sql` dan ganti
-> `DATABASE_URL` ke role `openmasjid_app`.
->
-> **Upgrade dari versi Supabase Auth**: akun lama di tabel `users` tidak punya password di Better Auth.
-> Jalankan `bun run db:migrate`, lalu buat ulang admin lewat `bun run db:seed` atau minta user memakai
-> "Lupa password". Trigger `auth.users → public.users` lama boleh dihapus dari database Supabase.
 
 ---
 
