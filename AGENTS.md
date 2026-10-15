@@ -50,7 +50,8 @@ OpenMasjid melayani **banyak masjid (tenant)** dari satu deployment dan satu dat
   `tenantId` dari body/query.
 - **Setiap handler tenant memakai `defineTenantHandler(access, (event, { tenant, user, db }) => …)`**
   (`server/utils/auth.ts`) dengan `access` = `public` | `staff` (admin+viewer, baca) | `admin` (tulis) |
-  `owner` (pemilik masjid: kelola pengurus). Badan handler berjalan di dalam `withTenant()` —
+  `owner` (pemilik masjid: kelola pengurus), plus `member` (siapa pun yang login di masjid itu,
+  termasuk jamaah). Badan handler berjalan di dalam `withTenant()` —
   transaksi yang mengeset `app.tenant_id`. **Gunakan `db` dari context, bukan `db` global.**
 - **RLS** aktif + `FORCE` di semua tabel data masjid (policy `<table>_tenant_isolation`, fail-closed:
   tanpa `app.tenant_id` → 0 baris). Kolom `tenant_id` default ke `app.tenant_id`, jadi insert di dalam
@@ -175,7 +176,7 @@ scripts/                  # seed, seed-*-fake (SEED_TENANT_SLUG), test-isolation
   `verifications`. ID uuid (`advanced.database.generateId: 'uuid'`). Field tambahan: `tenantId`
   (diisi adapter), `role` (`input: false`), `phone`, `isActive`. Hook `session.create.before` menolak
   user nonaktif/terhapus/beda tenant.
-- Server guard: `defineTenantHandler('staff' | 'admin' | 'owner' | 'public', …)`. Role & status
+- Server guard: `defineTenantHandler('public' | 'member' | 'staff' | 'admin' | 'owner', …)`. Role & status
   dibaca ulang dari DB per request (cookie cache bisa basi). Menonaktifkan pengurus menghapus sesinya.
 - Client: `useAuth()` / `useTenantContext()`; middleware global melindungi `/[tenant]/admin/**`.
   Sembunyikan aksi tulis dari viewer (`isAdmin`) dan menu pengurus dari non-owner (`isOwner`),
@@ -204,6 +205,20 @@ scripts/                  # seed, seed-*-fake (SEED_TENANT_SLUG), test-isolation
 - **Isolasi**: data satu masjid tidak boleh terlihat/terubah/terujuk oleh masjid lain — termasuk lewat id
   dari URL/body. Akses id milik masjid lain harus menghasilkan 404 (bukan 403).
 - **Pendaftar**: status turunan `confirmed|attended|cancelled` dari `attended_at`/`cancelled_at`.
+- **Pendaftaran jamaah** (`server/utils/registration.ts`):
+  - Jamaah membuat akun di `/<slug>/auth/register` (role `member`), lalu daftar lewat
+    `POST /api/t/<slug>/public/events/<slug>/register` dan batal lewat `…/cancel` (akses `member`).
+    Tiketnya ada di `/<slug>/my-tickets` (`GET /api/t/<slug>/me/registrations`).
+  - Ketersediaan (`not-required|past|closed|full|open`) dihitung `registrationAvailability()` di
+    `shared/utils/events.ts` — dipakai server **dan** UI, jangan diduplikasi.
+  - `registerMember()` mengunci baris event `FOR UPDATE` agar kuota aman saat daftar bersamaan.
+    Pendaftaran yang dibatalkan dipakai ulang (satu baris per user per event). Batal ditolak (409)
+    setelah check-in.
+  - Tiket QR: `om1.<registrantId>.<sig>`, sig = HMAC-SHA256(`tenantId:registrantId`) dengan
+    `TICKET_SECRET` (fallback `BETTER_AUTH_SECRET`). Ganti secret = semua tiket lama tidak berlaku.
+  - Check-in: `POST /api/t/<slug>/admin/check-in` (akses `admin`, UI `/<slug>/admin/check-in`).
+    Tiket tidak valid/masjid lain → 404; pendaftaran batal atau event lain (`eventId`) → 409;
+    check-in ulang mengembalikan `alreadyCheckedIn: true`.
 - **Jadwal sholat**: `computePrayerTimes(date, settings)`; metode `kemenag` = sudut 20°/18° + ihtiyat 2 menit.
   Tanggal selalu tanggal lokal masjid.
 
