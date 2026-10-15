@@ -2,7 +2,9 @@
 import QRCode from 'qrcode'
 
 const requestUrl = useRequestURL()
-const homeUrl = `${requestUrl.origin}/`
+const tp = useTenantPath()
+// The mosque portal (not the platform landing page).
+const homeUrl = `${requestUrl.origin}${tp('/')}`
 const qrDataUrl = ref('')
 
 onMounted(async () => {
@@ -30,11 +32,11 @@ onMounted(async () => {
 
     <div
       class="grid items-center border border-tv-line"
-      style="grid-template-columns: auto 1fr; gap: 2.5vw; border-radius: 0.94vw; padding: 1.5vw 2vw; background: oklch(0.16 0.04 155 / 0.6);"
+      style="grid-template-columns: auto 1fr; gap: 2.5vw; border-radius: 0.94vw; padding: 1.2vw 2vw; background: oklch(0.16 0.04 155 / 0.6);"
     >
       <div
         class="rounded-md bg-white grid place-items-center shrink-0 overflow-hidden"
-        style="width: 11vw; height: 11vw; padding: 0.5vw;"
+        style="width: 8.5vw; height: 8.5vw; padding: 0.4vw;"
       >
         <img
           v-if="qrDataUrl"
@@ -59,13 +61,13 @@ onMounted(async () => {
         </div>
         <div
           class="text-tv-ink-2"
-          style="font-size: 1.05vw; margin-top: 0.9vw; line-height: 1.55; max-width: 30vw;"
+          style="font-size: 1.05vw; margin-top: 0.9vw; line-height: 1.45; max-width: 52vw;"
         >
           Lihat profil masjid, jadwal sholat, dan agenda kegiatan langsung di gawai Anda.
         </div>
         <div
           class="font-mono text-tv-gold-2 truncate"
-          style="font-size: 0.95vw; margin-top: 1.05vw; max-width: 30vw;"
+          style="font-size: 0.95vw; margin-top: 0.8vw; max-width: 52vw;"
         >
           {{ homeUrl }}
         </div>

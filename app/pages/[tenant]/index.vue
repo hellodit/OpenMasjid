@@ -10,6 +10,21 @@ const { data: events, pending: eventsPending } = useFetch(`${api}/public/events`
   key: 'portal-events',
   query: { limit: 50 },
 })
+const { data: announcements } = useFetch(`${api}/public/announcements`, {
+  key: 'portal-announcements',
+  query: { limit: 10 },
+})
+const { data: duties } = useFetch(`${api}/public/duties`, { key: 'portal-duties' })
+
+/** Announcements shown on the home page; the rest live on /announcements. */
+const ANNOUNCEMENTS_ON_HOME = 3
+const homeAnnouncements = computed(() => (announcements.value ?? []).slice(0, ANNOUNCEMENTS_ON_HOME))
+
+const friday = computed(() => (duties.value ? nextFriday(duties.value.today) : null))
+const fridayDuties = computed(() => (duties.value?.items ?? []).filter(d => d.date === friday.value && d.service === 'jumuah'))
+/** This week's roster; the Friday prayer shown in its own card is left out. */
+const weekDuties = computed(() => groupDutiesByDay((duties.value?.items ?? [])
+  .filter(d => !(fridayDuties.value.length && d.date === friday.value && d.service === 'jumuah'))))
 
 const { now, timeHHMM, gregorianDate, hijriDate, zoneLabel } = useDisplayClock(() => mosque.value?.timezone)
 const { prayers, next, sunrise, countdown } = usePrayerSchedule(now)
@@ -255,6 +270,73 @@ function eventSchedule(ev: PublicEvent): string {
             </div>
           </li>
         </ul>
+      </div>
+    </section>
+
+    <!-- Announcements -->
+    <section v-if="homeAnnouncements.length" id="pengumuman" class="px-4 mb-10">
+      <div class="mx-auto max-w-2xl">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <Icon name="lucide:megaphone" size="16" class="text-cms-green-700" />
+            <h2 class="font-serif text-[18px] font-semibold">Pengumuman</h2>
+          </div>
+          <NuxtLink
+            v-if="(announcements?.length ?? 0) > ANNOUNCEMENTS_ON_HOME"
+            :to="tp('/announcements')"
+            class="text-[12px] font-semibold text-cms-green-800 hover:underline underline-offset-4"
+          >
+            Lihat semua ({{ announcements?.length }})
+          </NuxtLink>
+        </div>
+        <div class="space-y-3">
+          <PortalAnnouncementCard v-for="a in homeAnnouncements" :key="a.id" :announcement="a" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Duty roster -->
+    <section v-if="duties && (fridayDuties.length || weekDuties.length)" id="petugas" class="px-4 mb-10">
+      <div class="mx-auto max-w-2xl">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <Icon name="lucide:users-round" size="16" class="text-cms-green-700" />
+            <h2 class="font-serif text-[18px] font-semibold">Petugas Masjid</h2>
+          </div>
+          <NuxtLink
+            :to="tp('/duties')"
+            class="text-[12px] font-semibold text-cms-green-800 hover:underline underline-offset-4"
+          >
+            Jadwal lengkap
+          </NuxtLink>
+        </div>
+
+        <PortalJumuahCard
+          v-if="friday && fridayDuties.length"
+          :date="friday"
+          :today="duties.today"
+          :items="fridayDuties"
+          class="mb-4"
+        />
+
+        <div v-if="weekDuties.length" class="bg-white rounded-cms-lg border border-cms-border shadow-cms-sm overflow-hidden">
+          <div class="px-4 py-3 border-b border-cms-border flex items-center justify-between gap-2">
+            <div class="text-[13px] font-semibold">Jadwal petugas pekan ini</div>
+            <UButton
+              :to="tp('/duties')"
+              size="xs"
+              color="neutral"
+              variant="soft"
+              trailing-icon="i-lucide-arrow-right"
+              class="rounded-full shrink-0"
+            >
+              Lihat semua
+            </UButton>
+          </div>
+          <div class="divide-y divide-cms-border">
+            <PortalDutyDay v-for="day in weekDuties" :key="day.date" :day="day" :today="duties.today" compact />
+          </div>
+        </div>
       </div>
     </section>
 
