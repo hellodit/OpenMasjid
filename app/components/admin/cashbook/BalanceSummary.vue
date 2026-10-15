@@ -1,12 +1,19 @@
 <script setup lang="ts">
-import { formatRupiah, accountTypeIcon } from '~/utils/format'
+import { accountTypeIcon, formatRupiah } from '~/utils/format'
 import type { CashAccount } from '~/composables/useCashbook'
 
-defineProps<{
+const props = defineProps<{
   totalBalance: string
   accounts: CashAccount[]
   compact?: boolean
 }>()
+
+// The total includes archived accounts (money never disappears); flag it when
+// the listed (active) accounts don't add up to the total.
+const archivedDiff = computed(() => {
+  const listed = props.accounts.reduce((sum, a) => sum + Number(a.balance), 0)
+  return Math.round((Number(props.totalBalance) - listed) * 100) / 100
+})
 </script>
 
 <template>
@@ -16,6 +23,9 @@ defineProps<{
     </div>
     <div class="font-serif text-[36px] font-semibold mt-1 text-cms-green-800">
       {{ formatRupiah(totalBalance) }}
+    </div>
+    <div v-if="archivedDiff !== 0" class="text-[12px] text-cms-muted mt-0.5">
+      Termasuk {{ formatRupiah(archivedDiff) }} di akun arsip
     </div>
 
     <div

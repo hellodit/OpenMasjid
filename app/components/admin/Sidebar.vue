@@ -1,6 +1,12 @@
 <script setup lang="ts">
 const route = useRoute()
-const { EVENTS } = useAdminMock()
+const { user, signOut } = useAuth()
+
+const roleLabel: Record<string, string> = { admin: 'Admin DKM', viewer: 'Pengurus (lihat saja)', jamaah: 'Jamaah' }
+const initialsOf = (name: string) =>
+  name.split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase()
+
+const userMenu = [[{ label: 'Keluar', icon: 'i-lucide-log-out', onSelect: () => signOut() }]]
 
 interface NavItem {
   id: string
@@ -14,18 +20,17 @@ interface NavItem {
 const manage: NavItem[] = [
   { id: 'dashboard', name: 'Dashboard', icon: 'lucide:layout-grid', path: '/admin' },
   { id: 'kegiatan',  name: 'Kegiatan',  icon: 'lucide:calendar',
-    path: '/admin/events', count: EVENTS.length,
-    matches: ['/admin/events'] },
+    path: '/admin/events', matches: ['/admin/events'] },
   { id: 'kategori',  name: 'Kategori',  icon: 'lucide:tag', path: '/admin/categories' },
-  { id: 'pendaftar', name: 'Pendaftar', icon: 'lucide:users', path: '/admin/registrants', count: 142 },
-  { id: 'materi',    name: 'Materi Kajian', icon: 'lucide:book-open' },
+  { id: 'pendaftar', name: 'Pendaftar', icon: 'lucide:users', path: '/admin/registrants' },
   { id: 'cashbook',  name: 'Buku Kas',  icon: 'lucide:wallet',
     path: '/admin/cashbook', matches: ['/admin/cashbook'] },
 ]
 
 const system: NavItem[] = [
   { id: 'pengaturan', name: 'Pengaturan',   icon: 'lucide:settings', path: '/admin/settings' },
-  { id: 'notif',      name: 'Pemberitahuan', icon: 'lucide:bell', count: 3 },
+  { id: 'tv',         name: 'Layar TV',      icon: 'lucide:monitor', path: '/display' },
+  { id: 'transparansi', name: 'Transparansi', icon: 'lucide:globe', path: '/transparency' },
 ]
 
 const isActive = (item: NavItem) => {
@@ -114,14 +119,20 @@ const isActive = (item: NavItem) => {
     </nav>
 
     <!-- Footer -->
-    <div class="flex items-center gap-2.5 px-4 py-3.5 border-t border-[oklch(0.32_0.05_155)]">
-      <div class="w-9 h-9 rounded-full bg-cms-green-600 grid place-items-center text-white font-semibold text-[13px] shrink-0">
-        SH
-      </div>
-      <div class="leading-[1.25] min-w-0">
-        <div class="font-semibold text-[13px] text-white">H. Sulaiman</div>
-        <div class="text-[11px] text-[oklch(0.72_0.03_155)]">Ketua DKM</div>
-      </div>
-    </div>
+    <UDropdownMenu v-if="user" :items="userMenu" :content="{ side: 'top', align: 'start' }">
+      <button
+        type="button"
+        class="flex items-center gap-2.5 px-4 py-3.5 border-t border-[oklch(0.32_0.05_155)] text-left hover:bg-[oklch(0.34_0.07_155)] transition-colors"
+      >
+        <div class="w-9 h-9 rounded-full bg-cms-green-600 grid place-items-center text-white font-semibold text-[13px] shrink-0">
+          {{ initialsOf(user.name) }}
+        </div>
+        <div class="leading-[1.25] min-w-0 flex-1">
+          <div class="font-semibold text-[13px] text-white truncate">{{ user.name }}</div>
+          <div class="text-[11px] text-[oklch(0.72_0.03_155)]">{{ roleLabel[user.role] }}</div>
+        </div>
+        <Icon name="lucide:chevrons-up-down" size="16" class="opacity-60" />
+      </button>
+    </UDropdownMenu>
   </aside>
 </template>

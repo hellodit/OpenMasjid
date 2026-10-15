@@ -3,23 +3,20 @@ import { sql } from 'drizzle-orm'
 export default defineEventHandler(async (event) => {
   const startedAt = Date.now()
   let dbOk = false
-  let dbError: string | undefined
-
   try {
-    const rows = (await db.execute(sql`select 1 as ok`)) as Array<{ ok: number }>
+    const rows = (await db.execute(sql`select 1 as ok`)) as unknown as Array<{ ok: number }>
     dbOk = rows[0]?.ok === 1
-  } catch (err) {
-    dbError = (err as Error).message
+  }
+  catch (err) {
+    // Do not leak connection details publicly; log server-side instead.
+    console.error('[health] database check failed:', err)
   }
 
-  const ok = dbOk
-  setResponseStatus(event, ok ? 200 : 503)
+  setResponseStatus(event, dbOk ? 200 : 503)
   return {
-    ok,
+    ok: dbOk,
     ms: Date.now() - startedAt,
     timestamp: new Date().toISOString(),
-    checks: {
-      database: { ok: dbOk, ...(dbError ? { error: dbError } : {}) },
-    },
+    checks: { database: { ok: dbOk } },
   }
 })

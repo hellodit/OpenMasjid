@@ -1,0 +1,112 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+@import "./display.css";
+@import "./admin.css";
+
+/* Scan app sources (Tailwind v4 auto-detects, this keeps it explicit). */
+@source "../../";
+
+@theme static {
+  /* ─── Fonts (resolved & self-hosted by @nuxt/fonts) ─────────────── */
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-serif: "Lora", Georgia, serif;
+  --font-arab: "Amiri", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* ─── Brand palette used as Nuxt UI `primary` (see app.config.ts) ─ */
+  --color-masjid-50: oklch(0.97 0.015 155);
+  --color-masjid-100: oklch(0.94 0.03 155);
+  --color-masjid-200: oklch(0.90 0.045 155);
+  --color-masjid-300: oklch(0.85 0.06 155);
+  --color-masjid-400: oklch(0.75 0.08 155);
+  --color-masjid-500: oklch(0.65 0.09 155);
+  --color-masjid-600: oklch(0.55 0.10 155);
+  --color-masjid-700: oklch(0.45 0.10 155);
+  --color-masjid-800: oklch(0.36 0.09 155);
+  --color-masjid-900: oklch(0.28 0.06 155);
+  --color-masjid-950: oklch(0.20 0.045 155);
+
+  --color-gilt-50: oklch(0.97 0.02 78);
+  --color-gilt-100: oklch(0.93 0.04 78);
+  --color-gilt-200: oklch(0.88 0.06 78);
+  --color-gilt-300: oklch(0.83 0.08 78);
+  --color-gilt-400: oklch(0.78 0.10 78);
+  --color-gilt-500: oklch(0.72 0.10 78);
+  --color-gilt-600: oklch(0.62 0.11 78);
+  --color-gilt-700: oklch(0.52 0.11 78);
+  --color-gilt-800: oklch(0.45 0.10 78);
+  --color-gilt-900: oklch(0.36 0.08 78);
+  --color-gilt-950: oklch(0.28 0.06 78);
+
+  /* ─── TV display (dark theme) — prefixed `tv-` so it never clashes
+         with Nuxt UI semantic utilities such as `text-muted`. ─────── */
+  --color-tv-bg: oklch(0.18 0.04 155);
+  --color-tv-bg-2: oklch(0.22 0.05 155);
+  --color-tv-bg-3: oklch(0.28 0.06 155);
+  --color-tv-line: oklch(0.32 0.05 155);
+  --color-tv-line-soft: oklch(0.26 0.05 155 / 0.6);
+  --color-tv-ink: oklch(0.97 0.015 90);
+  --color-tv-ink-2: oklch(0.85 0.03 100);
+  --color-tv-muted: oklch(0.65 0.04 145);
+  --color-tv-gold: oklch(0.78 0.10 78);
+  --color-tv-gold-2: oklch(0.85 0.07 78);
+  --color-tv-green-glow: oklch(0.55 0.10 155);
+  --color-tv-rose: oklch(0.70 0.12 25);
+
+  /* ─── CMS (cream theme) ─────────────────────────────────────────── */
+  --color-cms-bg: #ffffff;
+  --color-cms-surface: #ffffff;
+  --color-cms-surface-2: oklch(0.975 0.012 95);
+  --color-cms-border: oklch(0.91 0.012 100);
+  --color-cms-border-strong: oklch(0.84 0.015 100);
+  --color-cms-ink: oklch(0.22 0.025 155);
+  --color-cms-ink-2: oklch(0.36 0.025 155);
+  --color-cms-muted: oklch(0.55 0.018 145);
+  --color-cms-muted-2: oklch(0.68 0.012 140);
+  --color-cms-gold: oklch(0.72 0.10 78);
+  --color-cms-gold-soft: oklch(0.93 0.04 78);
+  --color-cms-gold-ink: oklch(0.45 0.10 78);
+  --color-cms-rose: oklch(0.62 0.13 25);
+  --color-cms-rose-soft: oklch(0.95 0.025 25);
+  --color-cms-info: oklch(0.58 0.10 240);
+  --color-cms-info-soft: oklch(0.94 0.03 240);
+  --color-cms-green-50: oklch(0.97 0.015 155);
+  --color-cms-green-100: oklch(0.94 0.03 155);
+  --color-cms-green-300: oklch(0.85 0.06 155);
+  --color-cms-green-500: oklch(0.65 0.09 155);
+  --color-cms-green-600: oklch(0.55 0.10 155);
+  --color-cms-green-700: oklch(0.45 0.10 155);
+  --color-cms-green-800: oklch(0.36 0.09 155);
+  --color-cms-green-900: oklch(0.28 0.06 155);
+
+  --shadow-cms-xs: 0 1px 0 rgba(20, 50, 35, 0.04);
+  --shadow-cms-sm: 0 1px 2px rgba(20, 50, 35, 0.05), 0 1px 0 rgba(20, 50, 35, 0.03);
+  --shadow-cms: 0 6px 18px -8px rgba(20, 50, 35, 0.12), 0 1px 2px rgba(20, 50, 35, 0.05);
+  --shadow-cms-lg: 0 24px 48px -24px rgba(20, 50, 35, 0.22), 0 2px 6px rgba(20, 50, 35, 0.06);
+  --shadow-cms-primary: 0 1px 0 oklch(0.55 0.12 155) inset, 0 6px 14px -6px oklch(0.45 0.10 155 / 0.5);
+
+  --radius-cms-sm: 8px;
+  --radius-cms: 12px;
+  --radius-cms-lg: 18px;
+  --radius-cms-xl: 24px;
+
+  --animate-gold-pulse: gold-pulse 1.6s ease-in-out infinite;
+  --animate-marquee-scroll: marquee-scroll 60s linear infinite;
+
+  @keyframes gold-pulse {
+    0% { box-shadow: 0 0 0 0 oklch(0.78 0.10 78 / 0.7); }
+    70% { box-shadow: 0 0 0 14px oklch(0.78 0.10 78 / 0); }
+    100% { box-shadow: 0 0 0 0 oklch(0.78 0.10 78 / 0); }
+  }
+  @keyframes marquee-scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+}
+
+:root {
+  --ui-radius: 0.5rem;
+  /* Brand green is darker than Nuxt UI's default shade-500 mapping. */
+  --ui-primary: var(--ui-color-primary-700);
+  --ui-secondary: var(--ui-color-secondary-600);
+}

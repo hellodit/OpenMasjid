@@ -5,6 +5,12 @@ useHead({
 })
 
 const year = new Date().getFullYear()
+
+const features = [
+  { icon: 'i-lucide-calendar-days', label: 'Kegiatan & pendaftaran jamaah' },
+  { icon: 'i-lucide-wallet', label: 'Buku kas transparan' },
+  { icon: 'i-lucide-monitor', label: 'Jadwal sholat & layar TV otomatis' },
+]
 </script>
 
 <template>
@@ -42,25 +48,17 @@ const year = new Date().getFullYear()
             Kelola kegiatan masjid dengan tenang &amp; tertib.
           </h2>
           <p class="text-[15px] text-[oklch(0.85_0.03_155)] leading-relaxed">
-            Pantau jadwal kajian, pendaftaran jamaah, dan donasi dalam satu dasbor yang ringan, rapi, dan mudah dipakai pengurus masjid.
+            Pantau jadwal kajian, pendaftaran jamaah, dan buku kas dalam satu dasbor yang ringan, rapi, dan mudah dipakai pengurus masjid.
           </p>
 
-          <div class="mt-10 flex items-center gap-6 text-[oklch(0.78_0.04_155)]">
-            <div>
-              <div class="font-serif text-[28px] text-white">1.284</div>
-              <div class="text-[11px] uppercase tracking-[1.2px] mt-0.5">Jamaah aktif</div>
-            </div>
-            <div class="w-px h-10 bg-[oklch(0.40_0.08_155)]" />
-            <div>
-              <div class="font-serif text-[28px] text-white">48</div>
-              <div class="text-[11px] uppercase tracking-[1.2px] mt-0.5">Kegiatan / bulan</div>
-            </div>
-            <div class="w-px h-10 bg-[oklch(0.40_0.08_155)]" />
-            <div>
-              <div class="font-serif text-[28px] text-white">12</div>
-              <div class="text-[11px] uppercase tracking-[1.2px] mt-0.5">Masjid terhubung</div>
-            </div>
-          </div>
+          <ul class="mt-10 grid gap-3 text-[14px] text-[oklch(0.85_0.03_155)]">
+            <li v-for="f in features" :key="f.label" class="flex items-center gap-3">
+              <span class="w-8 h-8 rounded-[10px] bg-[oklch(0.40_0.08_155)] grid place-items-center text-cms-gold shrink-0">
+                <UIcon :name="f.icon" class="size-4" />
+              </span>
+              {{ f.label }}
+            </li>
+          </ul>
         </div>
 
         <div class="text-[12px] text-[oklch(0.70_0.04_155)] flex items-center justify-between">

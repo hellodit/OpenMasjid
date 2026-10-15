@@ -1,8 +1,5 @@
 import 'dotenv/config'
-import { drizzle } from 'drizzle-orm/postgres-js'
-import { eq } from 'drizzle-orm'
-import postgres from 'postgres'
-import * as schema from '../server/db/schema'
+import { and, eq, isNull, sql } from 'drizzle-orm'
 import {
   categories,
   mosqueProfile,
@@ -11,14 +8,15 @@ import {
   users,
 } from '../server/db/schema'
 
-const url = process.env.DATABASE_DIRECT_URL
-if (!url) {
-  console.error('DATABASE_DIRECT_URL is not set — aborting seed.')
+// Seeds use the direct (session) connection; the app modules read DATABASE_URL.
+if (process.env.DATABASE_DIRECT_URL) process.env.DATABASE_URL = process.env.DATABASE_DIRECT_URL
+if (!process.env.DATABASE_URL) {
+  console.error('DATABASE_DIRECT_URL / DATABASE_URL is not set — aborting seed.')
   process.exit(1)
 }
 
-const client = postgres(url, { max: 1 })
-const db = drizzle(client, { schema, casing: 'snake_case' })
+const { db } = await import('../server/utils/db')
+const { auth } = await import('../server/utils/auth')
 
 const CATEGORY_SEED = [
   { slug: 'kajian',   name: 'Kajian',         icon: 'lucide:book-open',   sortOrder: 1 },
@@ -33,7 +31,7 @@ async function seedCategories() {
   const result = await db
     .insert(categories)
     .values(CATEGORY_SEED)
-    .onConflictDoNothing({ target: categories.slug })
+    .onConflictDoNothing({ target: categories.slug, where: sql`deleted_at IS NULL` })
     .returning({ slug: categories.slug })
   console.log(`✓ categories: inserted ${result.length} new (out of ${CATEGORY_SEED.length})`)
 }
@@ -51,31 +49,40 @@ async function seedMosqueProfile() {
       capacity: 600,
       countryCode: 'ID',
       timezone: 'Asia/Jakarta',
+      // Monas, Jakarta — change in Pengaturan Masjid.
+      latitude: '-6.175392',
+      longitude: '106.827153',
     })
     .onConflictDoNothing({ target: mosqueProfile.id })
     .returning({ id: mosqueProfile.id })
   console.log(`✓ mosque_profile: ${result.length ? 'inserted singleton' : 'already exists'}`)
 }
 
-async function promoteAdmin() {
-  const adminId = process.env.ADMIN_USER_ID
-  if (!adminId) {
-    console.warn('⚠ ADMIN_USER_ID not set — skipping admin promotion.')
+/**
+ * Create (or promote) the first admin through Better Auth so the password is
+ * hashed and an `accounts` row exists. Configure via SEED_ADMIN_* env vars.
+ */
+async function seedAdmin() {
+  const email = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase()
+  const password = process.env.SEED_ADMIN_PASSWORD
+  const name = process.env.SEED_ADMIN_NAME ?? 'Admin DKM'
+  if (!email || !password) {
+    console.warn('⚠ SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD not set — skipping admin user.')
     return
   }
-  const result = await db
-    .update(users)
-    .set({ role: 'admin', updatedAt: new Date() })
-    .where(eq(users.id, adminId))
-    .returning({ id: users.id, email: users.email })
-  if (result.length === 0) {
-    console.warn(
-      `⚠ No users row found for ADMIN_USER_ID=${adminId}. ` +
-        'Make sure the user signed up via Supabase Auth first so the trigger creates a public.users row.',
-    )
-    return
+
+  let user = await db.query.users.findFirst({ where: eq(sql`lower(${users.email})`, email) })
+  if (!user) {
+    await auth.api.signUpEmail({ body: { email, password, name } })
+    user = await db.query.users.findFirst({ where: eq(sql`lower(${users.email})`, email) })
+    console.log(`✓ users: created ${email}`)
   }
-  console.log(`✓ users: promoted ${result[0].email} to role='admin'`)
+  if (!user) throw new Error('Admin user was not created')
+
+  if (user.role !== 'admin' || !user.emailVerified) {
+    await db.update(users).set({ role: 'admin', emailVerified: true }).where(eq(users.id, user.id))
+  }
+  console.log(`✓ users: ${email} has role='admin'`)
 }
 
 type CashbookSeed = {
@@ -106,7 +113,7 @@ const CASHBOOK_CATEGORY_SEED: CashbookSeed[] = [
       { slug: 'zakat-fitrah',  name: 'Fitrah',  icon: 'lucide:wheat',  sortOrder: 2 },
     ],
   },
-  { slug: 'hibah',        name: 'Hibah',         type: 'income', icon: 'lucide:gift-of-the-magi', sortOrder: 5 },
+  { slug: 'hibah',        name: 'Hibah',         type: 'income', icon: 'lucide:gift', sortOrder: 5 },
   { slug: 'pemasukan-lain', name: 'Lain-lain',   type: 'income', icon: 'lucide:circle-dollar-sign', sortOrder: 99 },
 
   // Expense
@@ -153,7 +160,7 @@ async function seedCashbookCategories() {
         colorToken: top.colorToken ?? null,
         sortOrder: top.sortOrder,
       })
-      .onConflictDoNothing()
+      .onConflictDoNothing({ target: transactionCategories.slug, where: sql`deleted_at IS NULL` })
       .returning({ id: transactionCategories.id, slug: transactionCategories.slug })
 
     if (topRow) inserted++
@@ -162,7 +169,7 @@ async function seedCashbookCategories() {
       topRow?.id ??
       (
         await db.query.transactionCategories.findFirst({
-          where: eq(transactionCategories.slug, top.slug),
+          where: and(eq(transactionCategories.slug, top.slug), isNull(transactionCategories.deletedAt)),
           columns: { id: true },
         })
       )?.id
@@ -181,7 +188,7 @@ async function seedCashbookCategories() {
           colorToken: child.colorToken ?? null,
           sortOrder: child.sortOrder,
         })
-        .onConflictDoNothing()
+        .onConflictDoNothing({ target: transactionCategories.slug, where: sql`deleted_at IS NULL` })
         .returning({ id: transactionCategories.id })
       if (res.length) inserted++
     }
@@ -194,7 +201,7 @@ async function main() {
   await seedCategories()
   await seedMosqueProfile()
   await seedCashbookCategories()
-  await promoteAdmin()
+  await seedAdmin()
   console.log('Done.')
 }
 
@@ -203,4 +210,4 @@ main()
     console.error(err)
     process.exitCode = 1
   })
-  .finally(() => client.end({ timeout: 5 }))
+  .finally(() => process.exit())

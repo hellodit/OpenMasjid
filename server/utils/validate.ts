@@ -1,38 +1,39 @@
 import { createError, getQuery, readBody, type H3Event } from 'h3'
-import type { ZodTypeAny, z } from 'zod'
+import type { z } from 'zod'
 
-function toError(issue: z.ZodIssue): string {
-  return issue.path.length ? `${issue.path.join('.')}: ${issue.message}` : issue.message
+function toMessages(error: z.ZodError): string[] {
+  return error.issues.map((issue) =>
+    issue.path.length ? `${issue.path.join('.')}: ${issue.message}` : issue.message,
+  )
 }
 
-export async function readZodBody<S extends ZodTypeAny>(
-  event: H3Event,
-  schema: S,
-): Promise<z.infer<S>> {
-  const body = await readBody(event)
-  const result = schema.safeParse(body)
+/** Parse the JSON body with a zod schema; 400 with readable messages on failure. */
+export async function readZodBody<S extends z.ZodType>(event: H3Event, schema: S): Promise<z.output<S>> {
+  const result = schema.safeParse(await readBody(event))
   if (!result.success) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Validation failed',
-      data: { errors: result.error.issues.map(toError) },
-    })
+    const errors = toMessages(result.error)
+    throw createError({ statusCode: 400, statusMessage: errors[0] ?? 'Validation failed', data: { errors } })
   }
   return result.data
 }
 
-export function readZodQuery<S extends ZodTypeAny>(
-  event: H3Event,
-  schema: S,
-): z.infer<S> {
-  const query = getQuery(event)
-  const result = schema.safeParse(query)
+export function readZodQuery<S extends z.ZodType>(event: H3Event, schema: S): z.output<S> {
+  const result = schema.safeParse(getQuery(event))
   if (!result.success) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Invalid query parameters',
-      data: { errors: result.error.issues.map(toError) },
-    })
+    const errors = toMessages(result.error)
+    throw createError({ statusCode: 400, statusMessage: errors[0] ?? 'Invalid query', data: { errors } })
   }
   return result.data
+}
+
+export function requireRouterId(event: H3Event, name = 'id'): string {
+  const id = event.context.params?.[name]
+  if (!id || !/^[0-9a-f-]{36}$/i.test(id))
+    throw createError({ statusCode: 400, statusMessage: 'ID tidak valid' })
+  return id
+}
+
+/** Escape `%`, `_` and `\` for use inside a LIKE/ILIKE pattern. */
+export function escapeLike(input: string): string {
+  return input.replace(/[\\%_]/g, (c) => `\\${c}`)
 }

@@ -1,38 +1,46 @@
-import { createError, defineEventHandler, getRouterParam } from 'h3'
-import { and, eq, isNull, sql } from 'drizzle-orm'
-import { requireAdmin } from '~~/server/utils/auth'
-import { db } from '~~/server/utils/db'
+import { and, eq, isNull, or, sql } from 'drizzle-orm'
 import { cashAccounts, transactions } from '~~/server/db/schema'
 
+/**
+ * Accounts with transactions are archived (is_active=false), others are
+ * soft-deleted. Either way the balance must be 0 first.
+ */
 export default defineEventHandler(async (event) => {
-  await requireAdmin(event)
-  const id = getRouterParam(event, 'id')
-  if (!id) throw createError({ statusCode: 400, statusMessage: 'Missing id' })
+  const user = await requireAdmin(event)
+  const id = requireRouterId(event)
 
-  const usage = await db
+  const account = await getAccountWithBalance(id)
+  if (!account) throw createError({ statusCode: 404, statusMessage: 'Akun tidak ditemukan' })
+  if (Number(account.balance) !== 0)
+    throw createError({
+      statusCode: 409,
+      statusMessage: 'Saldo akun harus 0 sebelum dihapus/diarsipkan. Pindahkan saldo lewat transaksi transfer.',
+    })
+
+  const [usage] = await db
     .select({ count: sql<number>`COUNT(*)::int` })
     .from(transactions)
     .where(
-      sql`(${transactions.accountId} = ${id} OR ${transactions.destinationAccountId} = ${id}) AND ${transactions.deletedAt} IS NULL`,
+      and(
+        isNull(transactions.deletedAt),
+        or(eq(transactions.accountId, id), eq(transactions.destinationAccountId, id)),
+      ),
     )
 
-  const hasTransactions = (usage[0]?.count ?? 0) > 0
-
-  if (hasTransactions) {
+  const where = and(eq(cashAccounts.id, id), isNull(cashAccounts.deletedAt))
+  if ((usage?.count ?? 0) > 0) {
     const [row] = await db
       .update(cashAccounts)
-      .set({ isActive: false, updatedAt: sql`now()` })
-      .where(and(eq(cashAccounts.id, id), isNull(cashAccounts.deletedAt)))
+      .set({ isActive: false, updatedBy: user.id })
+      .where(where)
       .returning()
-    if (!row) throw createError({ statusCode: 404, statusMessage: 'Akun tidak ditemukan' })
     return { archived: true, account: row }
   }
 
   const [row] = await db
     .update(cashAccounts)
-    .set({ deletedAt: sql`now()`, isActive: false })
-    .where(and(eq(cashAccounts.id, id), isNull(cashAccounts.deletedAt)))
+    .set({ deletedAt: new Date(), isActive: false, updatedBy: user.id })
+    .where(where)
     .returning()
-  if (!row) throw createError({ statusCode: 404, statusMessage: 'Akun tidak ditemukan' })
   return { deleted: true, account: row }
 })

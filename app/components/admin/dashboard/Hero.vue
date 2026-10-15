@@ -6,6 +6,7 @@ defineProps<{
   description: string
   arabic: string
   date: string
+  hijri?: string
   prayers: Prayer[]
 }>()
 </script>
@@ -26,8 +27,8 @@ defineProps<{
       </div>
     </div>
 
-    <div class="relative z-[1] bg-white/10 backdrop-blur border border-white/15 rounded-cms p-4">
-      <div class="flex items-center justify-between text-[12px] tracking-[0.6px] uppercase text-[oklch(0.85_0.04_155)] mb-2.5 font-semibold">
+    <div v-if="prayers.length" class="relative z-[1] bg-white/10 backdrop-blur border border-white/15 rounded-cms p-4">
+      <div class="flex items-center justify-between gap-2 text-[12px] tracking-[0.6px] uppercase text-[oklch(0.85_0.04_155)] mb-2.5 font-semibold">
         <span>Jadwal Sholat — {{ date }}</span>
         <span class="text-cms-gold">● Live</span>
       </div>
@@ -44,6 +45,7 @@ defineProps<{
           <div class="font-mono text-[13px] font-bold mt-0.5">{{ p.time }}</div>
         </div>
       </div>
+      <div v-if="hijri" class="text-[11.5px] text-[oklch(0.85_0.04_155)] mt-2.5 text-right">{{ hijri }}</div>
     </div>
   </div>
 </template>

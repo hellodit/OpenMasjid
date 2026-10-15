@@ -1,31 +1,89 @@
 <script setup lang="ts">
-import type { CategoryId } from '~/composables/useAdminMock'
-
 definePageMeta({ layout: 'admin' })
 useHead({ title: 'Kategori — OpenMasjid CMS' })
 
-const { CATEGORIES } = useAdminMock()
+const { isAdmin } = useAuth()
+const toast = useToast()
 
-interface CatRow {
-  id: CategoryId
-  name: string
-  ar: string
-  desc: string
-  events: number
-  attend: number
-  growth: string
+const { data, error, refresh, status } = await useFetch('/api/admin/categories')
+
+const errorMessage = computed(() => (error.value?.data as { statusMessage?: string } | undefined)?.statusMessage ?? error.value?.message)
+
+type Category = NonNullable<typeof data.value>[number]
+
+const cats = computed(() => data.value ?? [])
+const activeCount = computed(() => cats.value.filter(c => c.isActive).length)
+const totalEvents = computed(() => cats.value.reduce((s, c) => s + c.eventCount, 0))
+const popular = computed(() => {
+  const top = [...cats.value].sort((a, b) => b.eventCount - a.eventCount)[0]
+  return top && top.eventCount > 0 ? top.name : '—'
+})
+const nextSortOrder = computed(() => Math.min(9999, Math.max(0, ...cats.value.map(c => c.sortOrder)) + 1))
+
+// ─── Create / edit ───────────────────────────────────────────────────────
+const formOpen = ref(false)
+const editing = ref<Category | null>(null)
+
+function openCreate() {
+  editing.value = null
+  formOpen.value = true
+}
+function openEdit(c: Category) {
+  editing.value = c
+  formOpen.value = true
 }
 
-const cats: CatRow[] = [
-  { id: 'kajian',   name: 'Kajian Rutin',     ar: 'الدُّرُوس',         desc: 'Kajian rutin pekanan dan bulanan dari kitab-kitab utama serta tafsir.', events: 18, attend: 472,  growth: '+12%' },
-  { id: 'tahsin',   name: 'Tahsin & Tahfidz', ar: 'تحفيظ القرآن',    desc: 'Program tahsin tilawah dan tahfidz untuk seluruh kalangan jamaah.',     events: 11, attend: 286,  growth: '+8%' },
-  { id: 'tpa',      name: 'TPA / TPQ',        ar: 'تربية الأطفال',     desc: 'Pendidikan Al-Qur\'an untuk anak usia dini hingga remaja.',             events: 9,  attend: 184,  growth: '+4%' },
-  { id: 'zakat',    name: 'Zakat & Sosial',   ar: 'الزكاة والإحسان', desc: 'Penyaluran zakat, infaq, sedekah, dan kegiatan sosial kemasyarakatan.', events: 6,  attend: 98,   growth: '+22%' },
-  { id: 'muharram', name: 'Hari Besar Islam', ar: 'أيام إسلامية',    desc: 'Peringatan hari-hari besar Islam: Maulid, Isra Mi\'raj, Tahun Baru Hijriyah.', events: 3, attend: 1240, growth: '+35%' },
-  { id: 'umum',     name: 'Lainnya',          ar: 'أخرى',            desc: 'Kegiatan umum yang belum dikategorikan secara spesifik.',               events: 1,  attend: 12,   growth: '—' },
-]
+function errMsg(err: unknown) {
+  return (err as { data?: { statusMessage?: string } }).data?.statusMessage
+}
 
-const iconOf = (id: CategoryId) => CATEGORIES.find(c => c.id === id)?.icon ?? 'lucide:tag'
+// ─── Toggle active ───────────────────────────────────────────────────────
+const busyId = ref<string | null>(null)
+
+async function toggleActive(c: Category, isActive: boolean) {
+  busyId.value = c.id
+  try {
+    await $fetch(`/api/admin/categories/${c.id}`, { method: 'PUT', body: { isActive } })
+    toast.add({ color: 'success', title: isActive ? 'Kategori diaktifkan' : 'Kategori dinonaktifkan' })
+    await refresh()
+  }
+  catch (err) {
+    toast.add({ color: 'error', title: 'Gagal mengubah status', description: errMsg(err) })
+  }
+  finally {
+    busyId.value = null
+  }
+}
+
+// ─── Archive / delete ────────────────────────────────────────────────────
+const removing = ref<Category | null>(null)
+const removeOpen = computed({
+  get: () => !!removing.value,
+  set: (v: boolean) => { if (!v) removing.value = null },
+})
+const removeBusy = ref(false)
+
+async function confirmRemove() {
+  const c = removing.value
+  if (!c) return
+  removeBusy.value = true
+  try {
+    const res = await $fetch(`/api/admin/categories/${c.id}`, { method: 'DELETE' })
+    toast.add({
+      color: 'success',
+      title: res.archived ? 'Kategori diarsipkan' : 'Kategori dihapus',
+      description: res.archived ? 'Kategori masih dipakai kegiatan, sehingga hanya dinonaktifkan.' : undefined,
+    })
+    removing.value = null
+    await refresh()
+  }
+  catch (err) {
+    toast.add({ color: 'error', title: 'Gagal menghapus kategori', description: errMsg(err) })
+  }
+  finally {
+    removeBusy.value = false
+  }
+}
 </script>
 
 <template>
@@ -36,30 +94,48 @@ const iconOf = (id: CategoryId) => CATEGORIES.find(c => c.id === id)?.icon ?? 'l
       description="Pisahkan kegiatan ke dalam kategori untuk memudahkan pencarian dan pelaporan kepada DKM."
     >
       <template #actions>
-        <AdminBtn><Icon name="lucide:filter" size="16" /> Filter</AdminBtn>
-        <AdminBtn variant="primary"><Icon name="lucide:plus" size="16" /> Kategori Baru</AdminBtn>
+        <UButton v-if="isAdmin" icon="i-lucide-plus" label="Kategori Baru" class="font-semibold" @click="openCreate" />
       </template>
     </AdminPageHeader>
 
+    <UAlert
+      v-if="error"
+      color="error"
+      variant="subtle"
+      icon="i-lucide-triangle-alert"
+      title="Gagal memuat kategori"
+      :description="errorMessage"
+      class="mb-6"
+    />
+
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <AdminStatCard label="Total Kategori" :num="6" icon="lucide:tag" />
-      <AdminStatCard label="Kategori Aktif" :num="6" tone="info" icon="lucide:check" />
-      <AdminStatCard label="Paling Populer" num="Kajian" tone="gold" icon="lucide:trending-up" />
-      <AdminStatCard label="Hadirin Total" num="2.292" tone="rose" icon="lucide:users" />
+      <AdminStatCard label="Total Kategori" :num="cats.length" icon="lucide:tag" />
+      <AdminStatCard label="Kategori Aktif" :num="activeCount" tone="info" icon="lucide:check" />
+      <AdminStatCard label="Paling Banyak Kegiatan" :num="popular" tone="gold" icon="lucide:trending-up" />
+      <AdminStatCard label="Total Kegiatan" :num="totalEvents" tone="rose" icon="lucide:calendar" />
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div v-if="status === 'pending' && !cats.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <USkeleton v-for="i in 3" :key="i" class="h-[220px] rounded-cms-lg" />
+    </div>
+
+    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       <AdminCategoriesCard
         v-for="c in cats"
         :key="c.id"
-        v-bind="c"
-        :icon="iconOf(c.id)"
+        :category="c"
+        :can-edit="isAdmin"
+        :busy="busyId === c.id"
+        @edit="openEdit(c)"
+        @toggle="(v) => toggleActive(c, v)"
+        @remove="removing = c"
       />
 
-      <!-- Add card -->
       <button
+        v-if="isAdmin"
         type="button"
-        class="cms-cat-add relative rounded-cms-lg p-6 min-h-[200px] flex flex-col items-center justify-center text-center bg-cms-surface border-[1.5px] border-dashed border-cms-green-300 text-cms-green-700 hover:bg-cms-green-50 hover:border-cms-green-700 transition-colors"
+        class="relative rounded-cms-lg p-6 min-h-[200px] flex flex-col items-center justify-center text-center bg-cms-surface border-[1.5px] border-dashed border-cms-green-300 text-cms-green-700 hover:bg-cms-green-50 hover:border-cms-green-700 transition-colors"
+        @click="openCreate"
       >
         <div class="w-14 h-14 rounded-xl bg-cms-green-100 border border-cms-green-300 text-cms-green-700 grid place-items-center mb-2.5">
           <Icon name="lucide:plus" size="24" />
@@ -69,6 +145,46 @@ const iconOf = (id: CategoryId) => CATEGORIES.find(c => c.id === id)?.icon ?? 'l
           Buat kategori baru untuk mengelompokkan kegiatan masjid Anda.
         </div>
       </button>
+
+      <div v-if="!cats.length && !isAdmin && !error" class="text-[13px] text-cms-muted col-span-full text-center py-10">
+        Belum ada kategori.
+      </div>
     </div>
+
+    <AdminCategoriesFormModal
+      v-if="isAdmin"
+      v-model:open="formOpen"
+      :category="editing"
+      :next-sort-order="nextSortOrder"
+      @saved="refresh()"
+    />
+
+    <UModal
+      v-if="isAdmin"
+      v-model:open="removeOpen"
+      :title="removing?.eventCount ? 'Arsipkan kategori?' : 'Hapus kategori?'"
+    >
+      <template #body>
+        <p v-if="removing?.eventCount" class="text-sm text-cms-ink-2 m-0">
+          Kategori <b>{{ removing?.name }}</b> masih dipakai oleh {{ removing?.eventCount }} kegiatan, sehingga tidak
+          dihapus melainkan <b>dinonaktifkan</b>. Kegiatan yang ada tetap memakai kategori ini.
+        </p>
+        <p v-else class="text-sm text-cms-ink-2 m-0">
+          Kategori <b>{{ removing?.name }}</b> akan dihapus. Tindakan ini tidak dapat dibatalkan dari CMS.
+        </p>
+      </template>
+      <template #footer>
+        <div class="flex justify-end gap-2 w-full">
+          <UButton color="neutral" variant="outline" label="Batal" @click="removing = null" />
+          <UButton
+            color="error"
+            :loading="removeBusy"
+            :icon="removing?.eventCount ? 'i-lucide-archive' : 'i-lucide-trash-2'"
+            :label="removing?.eventCount ? 'Arsipkan' : 'Hapus'"
+            @click="confirmRemove"
+          />
+        </div>
+      </template>
+    </UModal>
   </div>
 </template>

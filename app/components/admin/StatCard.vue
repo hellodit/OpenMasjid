@@ -7,7 +7,7 @@ withDefaults(defineProps<{
   delta?: string
   icon: string
   tone?: Tone
-}>(), { tone: 'default' })
+}>(), { tone: 'default', delta: undefined })
 
 const toneIcon: Record<Tone, string> = {
   default: 'bg-cms-green-100 text-cms-green-700',

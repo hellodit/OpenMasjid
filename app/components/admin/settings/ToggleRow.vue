@@ -1,6 +1,6 @@
 <script setup lang="ts">
-defineProps<{ modelValue: boolean, title: string, description: string }>()
-defineEmits<{ 'update:modelValue': [v: boolean] }>()
+defineProps<{ title: string, description: string, name?: string }>()
+const model = defineModel<boolean>({ required: true })
 </script>
 
 <template>
@@ -9,6 +9,8 @@ defineEmits<{ 'update:modelValue': [v: boolean] }>()
       <div class="font-semibold text-[13.5px] text-cms-ink">{{ title }}</div>
       <div class="text-[12.5px] text-cms-muted mt-0.5 max-w-[360px]">{{ description }}</div>
     </div>
-    <AdminToggleSwitch :model-value="modelValue" @update:model-value="$emit('update:modelValue', $event)" />
+    <UFormField :name="name">
+      <USwitch v-model="model" :aria-label="title" />
+    </UFormField>
   </div>
 </template>

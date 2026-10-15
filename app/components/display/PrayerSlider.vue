@@ -2,24 +2,43 @@
 import type { PrayerState } from '~/composables/usePrayerSchedule'
 import PrayerSchedule from './PrayerSchedule.vue'
 import QRSlide from './QRSlide.vue'
+import CashbookSlide from './CashbookSlide.vue'
+
+interface CashbookSummary {
+  totalBalance: string
+  totalIncome: string
+  totalExpense: string
+  range: { from: string, to: string }
+}
 
 interface Props {
   prayers: PrayerState[]
+  cashbook?: CashbookSummary | null
   interval?: number
 }
-const props = withDefaults(defineProps<Props>(), { interval: 12000 })
+const props = withDefaults(defineProps<Props>(), { interval: 12000, cashbook: null })
 
-const slides = ['prayer', 'qr'] as const
+type Slide = 'prayer' | 'cashbook' | 'qr'
+const slides = computed<Slide[]>(() => {
+  const list: Slide[] = []
+  if (props.prayers.length) list.push('prayer')
+  if (props.cashbook) list.push('cashbook')
+  list.push('qr')
+  return list
+})
 const activeIndex = ref(0)
 
 let timer: ReturnType<typeof setInterval> | undefined
 onMounted(() => {
   timer = setInterval(() => {
-    activeIndex.value = (activeIndex.value + 1) % slides.length
+    activeIndex.value = (activeIndex.value + 1) % slides.value.length
   }, props.interval)
 })
 onBeforeUnmount(() => {
   if (timer) clearInterval(timer)
+})
+watch(() => slides.value.length, (len) => {
+  if (activeIndex.value >= len) activeIndex.value = 0
 })
 </script>
 
@@ -34,6 +53,13 @@ onBeforeUnmount(() => {
         :aria-hidden="activeIndex !== i"
       >
         <PrayerSchedule v-if="name === 'prayer'" :prayers="prayers" />
+        <CashbookSlide
+          v-else-if="name === 'cashbook' && cashbook"
+          :total-balance="cashbook.totalBalance"
+          :total-income="cashbook.totalIncome"
+          :total-expense="cashbook.totalExpense"
+          :range="cashbook.range"
+        />
         <QRSlide v-else />
       </div>
     </div>
@@ -46,7 +72,7 @@ onBeforeUnmount(() => {
         v-for="(_, i) in slides"
         :key="i"
         class="rounded-full transition-all duration-300"
-        :class="activeIndex === i ? 'bg-gold' : 'bg-line'"
+        :class="activeIndex === i ? 'bg-tv-gold' : 'bg-tv-line'"
         :style="activeIndex === i
           ? 'width: 1.46vw; height: 0.42vw;'
           : 'width: 0.42vw; height: 0.42vw;'"

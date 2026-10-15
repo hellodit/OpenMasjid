@@ -6,11 +6,12 @@ import {
   integer,
   pgTable,
   text,
-  timestamp,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
 import { transactionCategoryType } from './_enums'
+import { timestamps } from './_columns'
+import { users } from './users'
 
 export const transactionCategories = pgTable(
   'transaction_categories',
@@ -28,13 +29,9 @@ export const transactionCategories = pgTable(
     description: text('description'),
     sortOrder: integer('sort_order').notNull().default(0),
     isActive: boolean('is_active').notNull().default(true),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .default(sql`now()`),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .default(sql`now()`),
-    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
+    ...timestamps,
   },
   (t) => [
     uniqueIndex('transaction_categories_slug_unique')

@@ -12,32 +12,33 @@ function fmt(date: Date): string {
   return `${y}-${m}-${d}`
 }
 
-export function resolvePeriod(input: {
-  period?: string
-  date?: string
-  from?: string
-  to?: string
-}): DateRange {
+/** Today's calendar date (YYYY-MM-DD) in the given IANA timezone. */
+export function todayIn(timeZone: string, now = new Date()): string {
+  // en-CA formats as YYYY-MM-DD.
+  return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
+}
+
+/**
+ * Resolve a reporting period to an inclusive date range.
+ * "Today" is evaluated in the mosque's timezone, not UTC — otherwise between
+ * 00:00 and 07:00 WIB the current day/month would still be the previous one.
+ */
+export function resolvePeriod(
+  input: { period?: string, date?: string, from?: string, to?: string },
+  timeZone: string,
+): DateRange {
   if (input.from && input.to) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.from) || !/^\d{4}-\d{2}-\d{2}$/.test(input.to))
-      throw createError({ statusCode: 400, statusMessage: 'Format tanggal: YYYY-MM-DD' })
+    if (input.from > input.to)
+      throw createError({ statusCode: 400, statusMessage: 'Tanggal awal harus sebelum tanggal akhir' })
     return { from: input.from, to: input.to }
   }
 
   const period = input.period ?? 'month'
-  const refIso = input.date ?? fmt(new Date())
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(refIso))
-    throw createError({ statusCode: 400, statusMessage: 'Format tanggal: YYYY-MM-DD' })
-
-  const [yStr, mStr, dStr] = refIso.split('-')
-  const y = Number(yStr)
-  const m = Number(mStr)
-  const d = Number(dStr)
+  const refIso = input.date ?? todayIn(timeZone)
+  const [y, m, d] = refIso.split('-').map(Number) as [number, number, number]
   const ref = new Date(Date.UTC(y, m - 1, d))
 
-  if (period === 'day') {
-    return { from: refIso, to: refIso }
-  }
+  if (period === 'day') return { from: refIso, to: refIso }
   if (period === 'week') {
     const day = ref.getUTCDay() || 7
     const start = new Date(ref)
@@ -47,12 +48,8 @@ export function resolvePeriod(input: {
     return { from: fmt(start), to: fmt(end) }
   }
   if (period === 'month') {
-    const start = new Date(Date.UTC(y, m - 1, 1))
-    const end = new Date(Date.UTC(y, m, 0))
-    return { from: fmt(start), to: fmt(end) }
+    return { from: fmt(new Date(Date.UTC(y, m - 1, 1))), to: fmt(new Date(Date.UTC(y, m, 0))) }
   }
-  if (period === 'year') {
-    return { from: `${y}-01-01`, to: `${y}-12-31` }
-  }
+  if (period === 'year') return { from: `${y}-01-01`, to: `${y}-12-31` }
   throw createError({ statusCode: 400, statusMessage: 'Period harus day/week/month/year atau pakai from+to' })
 }

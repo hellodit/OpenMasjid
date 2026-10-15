@@ -1,63 +1,69 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useAuthSession } from '~/composables/useAuthSession'
+import { firstOfMonthIso, formatDate, formatRupiah, todayIso } from '~/utils/format'
+import type { TabsItem } from '@nuxt/ui'
 import { useCashbookSummary } from '~/composables/useCashbook'
-import { firstOfMonthIso, formatRupiah, todayIso } from '~/utils/format'
 
 definePageMeta({ layout: 'admin' })
 useHead({ title: 'Laporan — Buku Kas' })
 
-const today = new Date()
-const range = ref({ from: firstOfMonthIso(today), to: todayIso() })
+const range = ref({ from: firstOfMonthIso(new Date()), to: todayIso() })
 const breakdownType = ref<'income' | 'expense'>('expense')
 
-const summaryQuery = computed(() => ({ from: range.value.from, to: range.value.to }))
-const { authHeaders } = useAuthSession()
-const { data: summary } = useCashbookSummary(summaryQuery)
+const breakdownTabs = [
+  { label: 'Pengeluaran', value: 'expense' },
+  { label: 'Pemasukan', value: 'income' },
+] satisfies TabsItem[]
 
-interface BreakdownResponse {
-  range: { from: string; to: string }
-  type: 'income' | 'expense'
-  grandTotal: string
-  breakdown: Array<{
-    categoryId: string | null
-    categoryName: string | null
-    colorToken: string | null
-    icon: string | null
-    total: string
-    count: number
-    percentage: string
-  }>
+function pad(n: number) {
+  return String(n).padStart(2, '0')
 }
 
-const breakdownQuery = computed(() => ({
-  type: breakdownType.value,
-  from: range.value.from,
-  to: range.value.to,
-}))
+type Preset = 'this-month' | 'last-month' | 'this-year' | 'last-year'
+const presets: Array<{ key: Preset; label: string }> = [
+  { key: 'this-month', label: 'Bulan ini' },
+  { key: 'last-month', label: 'Bulan lalu' },
+  { key: 'this-year', label: 'Tahun ini' },
+  { key: 'last-year', label: 'Tahun lalu' },
+]
 
-const { data: breakdown } = useFetch<BreakdownResponse>(
-  '/api/admin/cashbook/reports/by-category',
-  { query: breakdownQuery, headers: authHeaders(), watch: [breakdownQuery] },
+function presetRange(preset: Preset): { from: string; to: string } {
+  const now = new Date()
+  const y = now.getFullYear()
+  if (preset === 'this-month') return { from: firstOfMonthIso(now), to: todayIso() }
+  if (preset === 'last-month') {
+    const prev = new Date(y, now.getMonth() - 1, 1)
+    const lastDay = new Date(y, now.getMonth(), 0).getDate()
+    const ym = `${prev.getFullYear()}-${pad(prev.getMonth() + 1)}`
+    return { from: `${ym}-01`, to: `${ym}-${pad(lastDay)}` }
+  }
+  if (preset === 'this-year') return { from: `${y}-01-01`, to: todayIso() }
+  return { from: `${y - 1}-01-01`, to: `${y - 1}-12-31` }
+}
+
+const activePreset = computed(() =>
+  presets.find((p) => {
+    const r = presetRange(p.key)
+    return r.from === range.value.from && r.to === range.value.to
+  })?.key,
 )
 
-async function exportCsv() {
-  const params = new URLSearchParams({ from: range.value.from, to: range.value.to })
-  const res = await fetch(`/api/admin/cashbook/reports/export?${params}`, {
-    headers: authHeaders(),
-  })
-  if (!res.ok) return
-  const blob = await res.blob()
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `laporan-${range.value.from}_${range.value.to}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
-}
+const summaryQuery = computed(() => ({ from: range.value.from, to: range.value.to }))
+const breakdownQuery = computed(() => ({ ...summaryQuery.value, type: breakdownType.value }))
 
-const inputCls =
-  'h-9 px-2.5 border border-cms-border rounded-cms bg-cms-surface text-sm text-cms-ink outline-none focus:border-cms-green-700'
+const [{ data: summary }, { data: breakdown, pending: breakdownLoading }] = await Promise.all([
+  useCashbookSummary(summaryQuery),
+  useFetch('/api/admin/cashbook/reports/by-category', { query: breakdownQuery, watch: [breakdownQuery] }),
+])
+
+const rangeLabel = computed(() =>
+  summary.value ? `${formatDate(summary.value.range.from)} – ${formatDate(summary.value.range.to)}` : '',
+)
+
+function exportCsv() {
+  // Cookie-authenticated GET; the server sets Content-Disposition: attachment.
+  const params = new URLSearchParams({ from: range.value.from, to: range.value.to })
+  window.location.href = `/api/admin/cashbook/reports/export?${params}`
+}
 </script>
 
 <template>
@@ -68,21 +74,31 @@ const inputCls =
       description="Ringkasan pemasukan, pengeluaran, dan breakdown per kategori untuk periode tertentu."
     >
       <template #actions>
-        <AdminBtn variant="ghost" @click="exportCsv">
-          <Icon name="lucide:download" size="16" /> Export CSV
-        </AdminBtn>
+        <UButton color="neutral" variant="ghost" icon="i-lucide-download" label="Export CSV" @click="exportCsv" />
       </template>
     </AdminPageHeader>
 
-    <div class="bg-cms-surface border border-cms-border rounded-cms-lg p-4 mb-6 flex flex-wrap items-end gap-3">
+    <div class="bg-cms-surface border border-cms-border rounded-cms-lg p-4 mb-6 flex flex-wrap items-end gap-4">
       <div>
         <div class="text-[11px] uppercase tracking-[0.3px] text-cms-muted font-semibold mb-1">Periode</div>
         <div class="flex items-center gap-2">
-          <input v-model="range.from" type="date" :class="inputCls">
+          <UInput v-model="range.from" type="date" aria-label="Dari tanggal" :max="range.to" />
           <span class="text-cms-muted">—</span>
-          <input v-model="range.to" type="date" :class="inputCls">
+          <UInput v-model="range.to" type="date" aria-label="Sampai tanggal" :min="range.from" />
         </div>
       </div>
+      <div class="flex flex-wrap gap-1.5">
+        <UButton
+          v-for="p in presets"
+          :key="p.key"
+          size="sm"
+          :color="activePreset === p.key ? 'primary' : 'neutral'"
+          :variant="activePreset === p.key ? 'soft' : 'ghost'"
+          :label="p.label"
+          @click="range = presetRange(p.key)"
+        />
+      </div>
+      <div v-if="rangeLabel" class="ml-auto text-[12.5px] text-cms-muted">{{ rangeLabel }}</div>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -103,6 +119,7 @@ const inputCls =
       <AdminStatCard
         label="Arus Kas Bersih"
         :num="formatRupiah(summary?.totals?.netCashFlow ?? '0')"
+        :delta="summary?.totals?.transferCount ? `${summary.totals.transferCount} transfer antar akun` : undefined"
         icon="lucide:trending-up"
         tone="info"
       />
@@ -110,29 +127,20 @@ const inputCls =
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div>
-        <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center justify-between mb-3 gap-3">
           <h3 class="font-serif text-[18px] font-semibold m-0">Breakdown per Kategori</h3>
-          <div class="inline-flex gap-1 p-1 bg-cms-surface-2 rounded-cms border border-cms-border">
-            <button
-              type="button"
-              :class="[
-                'h-7 px-3 rounded-cms-sm text-[12.5px] font-semibold',
-                breakdownType === 'expense' ? 'bg-cms-surface text-cms-ink shadow-sm' : 'text-cms-muted',
-              ]"
-              @click="breakdownType = 'expense'"
-            >Pengeluaran</button>
-            <button
-              type="button"
-              :class="[
-                'h-7 px-3 rounded-cms-sm text-[12.5px] font-semibold',
-                breakdownType === 'income' ? 'bg-cms-surface text-cms-ink shadow-sm' : 'text-cms-muted',
-              ]"
-              @click="breakdownType = 'income'"
-            >Pemasukan</button>
-          </div>
+          <UTabs
+            v-model="breakdownType"
+            :items="breakdownTabs"
+            :content="false"
+            color="neutral"
+            variant="pill"
+            size="xs"
+          />
         </div>
         <AdminCashbookCategoryBreakdown
-          :items="breakdown?.breakdown ?? []"
+          :items="(breakdown?.breakdown ?? []).map((b) => ({ ...b, type: breakdownType }))"
+          :class="breakdownLoading && 'opacity-60'"
           empty-message="Belum ada transaksi pada periode ini."
         />
       </div>

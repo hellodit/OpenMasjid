@@ -86,12 +86,6 @@ async function loadCategories(): Promise<{ income: CategoryRow[]; expense: Categ
 }
 
 async function pickCreator(): Promise<string> {
-  const envId = process.env.ADMIN_USER_ID
-  if (envId) {
-    const row = await db.query.users.findFirst({ where: eq(users.id, envId), columns: { id: true } })
-    if (row) return row.id
-    console.warn(`⚠ ADMIN_USER_ID=${envId} not in users table — falling back to first admin.`)
-  }
   const admin = await db.query.users.findFirst({
     where: eq(users.role, 'admin'),
     columns: { id: true },
@@ -106,7 +100,9 @@ async function pickCreator(): Promise<string> {
     .values({
       email: 'seed-bot@local.invalid',
       fullName: 'Seed Bot',
-      role: 'admin',
+      // No credentials → cannot log in; only used as `created_by`.
+      role: 'viewer',
+      isActive: false,
     })
     .returning({ id: users.id })
   return bootstrap!.id

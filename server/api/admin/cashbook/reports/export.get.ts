@@ -1,36 +1,25 @@
-import { defineEventHandler, setHeader } from 'h3'
 import { and, asc, eq, gte, isNull, lte } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
-import { requireAdmin } from '~~/server/utils/auth'
-import { db } from '~~/server/utils/db'
 import {
   cashAccounts,
   transactionCategories,
   transactions,
   users,
 } from '~~/server/db/schema'
-import { resolvePeriod } from '~~/server/utils/period'
-import { readZodQuery } from '~~/server/utils/validate'
-import { z } from 'zod'
-
-const querySchema = z.object({
-  period: z.enum(['day', 'week', 'month', 'year']).optional(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-})
+import { periodQuery } from '#shared/schemas/common'
 
 function csvCell(val: string | number | null | undefined): string {
   if (val === null || val === undefined) return ''
-  const s = String(val)
-  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`
+  let s = String(val)
+  // Neutralise spreadsheet formula injection (=, +, -, @ at the start of text).
+  if (typeof val === 'string' && /^[=+\-@\t\r]/.test(s) && !/^-?\d+(\.\d+)?$/.test(s)) s = `'${s}`
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`
   return s
 }
 
 export default defineEventHandler(async (event) => {
-  await requireAdmin(event)
-  const params = readZodQuery(event, querySchema)
-  const range = resolvePeriod(params)
+  await requireStaff(event)
+  const range = resolvePeriod(readZodQuery(event, periodQuery), await getMosqueTimezone())
 
   const destAccount = alias(cashAccounts, 'dest_account')
 
@@ -92,7 +81,7 @@ export default defineEventHandler(async (event) => {
         .join(','),
     )
   }
-  const csv = '﻿' + lines.join('\n')
+  const csv = '\uFEFF' + lines.join('\r\n')
 
   setHeader(event, 'content-type', 'text/csv; charset=utf-8')
   setHeader(

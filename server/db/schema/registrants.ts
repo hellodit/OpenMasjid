@@ -10,6 +10,7 @@ import {
 import { events } from './events'
 import { users } from './users'
 import { registrantSource } from './_enums'
+import { timestamps } from './_columns'
 
 export const registrants = pgTable(
   'registrants',
@@ -28,14 +29,9 @@ export const registrants = pgTable(
     checkedInBy: uuid('checked_in_by').references(() => users.id, {
       onDelete: 'set null',
     }),
+    cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
     source: registrantSource('source').notNull().default('web'),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .default(sql`now()`),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .default(sql`now()`),
-    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    ...timestamps,
   },
   (t) => [
     uniqueIndex('registrants_event_user_active_unique')

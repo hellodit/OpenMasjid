@@ -1,31 +1,30 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
 import {
   useCashAccounts,
   useTransactionCategories,
   useTransactions,
   type TransactionFilters,
 } from '~/composables/useCashbook'
-import { useAuthSession } from '~/composables/useAuthSession'
+import type { TransactionFilterValue } from '~/components/admin/cashbook/TransactionFilters.vue'
 
 definePageMeta({ layout: 'admin' })
 useHead({ title: 'Transaksi — Buku Kas' })
 
-const filters = ref<TransactionFilters>({ page: 1, pageSize: 25 })
-const baseFilters = ref<Omit<TransactionFilters, 'page' | 'pageSize'>>({})
+const PAGE_SIZE = 25
+const { isAdmin } = useAuth()
 
-watch(
-  baseFilters,
-  (val) => {
-    filters.value = { ...val, page: 1, pageSize: 25 }
-  },
-  { deep: true },
-)
+const filters = ref<TransactionFilters>({ page: 1, pageSize: PAGE_SIZE })
+const baseFilters = ref<TransactionFilterValue>({})
 
-const { data: txData, pending } = useTransactions(filters)
-const { data: accounts } = useCashAccounts()
-const { data: categories } = useTransactionCategories({ includeArchived: true })
-const { authHeaders } = useAuthSession()
+watch(baseFilters, (val) => {
+  filters.value = { ...val, page: 1, pageSize: PAGE_SIZE }
+})
+
+const [{ data: txData, pending }, { data: accounts }, { data: categories }] = await Promise.all([
+  useTransactions(filters),
+  useCashAccounts({ includeArchived: true }),
+  useTransactionCategories({ includeArchived: true }),
+])
 
 const router = useRouter()
 
@@ -33,21 +32,12 @@ function go(page: number) {
   filters.value = { ...filters.value, page }
 }
 
-async function exportCsv() {
+function exportCsv() {
+  // Cookie-authenticated GET; the server responds with Content-Disposition: attachment.
   const params = new URLSearchParams()
   if (filters.value.from) params.set('from', filters.value.from)
   if (filters.value.to) params.set('to', filters.value.to)
-  const res = await fetch(`/api/admin/cashbook/reports/export?${params.toString()}`, {
-    headers: authHeaders(),
-  })
-  if (!res.ok) return
-  const blob = await res.blob()
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `buku-kas-${filters.value.from ?? 'all'}_${filters.value.to ?? 'now'}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
+  window.location.href = `/api/admin/cashbook/reports/export?${params}`
 }
 </script>
 
@@ -59,12 +49,8 @@ async function exportCsv() {
       description="Catatan lengkap semua pemasukan, pengeluaran, dan transfer antar akun."
     >
       <template #actions>
-        <AdminBtn variant="ghost" @click="exportCsv">
-          <Icon name="lucide:download" size="16" /> Export CSV
-        </AdminBtn>
-        <AdminBtn to="/admin/cashbook/transactions/new" variant="primary">
-          <Icon name="lucide:plus" size="16" /> Transaksi Baru
-        </AdminBtn>
+        <UButton color="neutral" variant="ghost" icon="i-lucide-download" label="Export CSV" @click="exportCsv" />
+        <UButton v-if="isAdmin" to="/admin/cashbook/transactions/new" icon="i-lucide-plus" label="Transaksi Baru" class="font-semibold" />
       </template>
     </AdminPageHeader>
 
@@ -77,34 +63,9 @@ async function exportCsv() {
     <AdminCashbookTransactionTable
       :rows="txData?.data ?? []"
       :loading="pending"
+      :pagination="txData?.pagination"
       @open="(id: string) => router.push(`/admin/cashbook/transactions/${id}`)"
+      @update:page="go"
     />
-
-    <div
-      v-if="txData?.pagination && txData.pagination.totalPages > 1"
-      class="flex items-center justify-between mt-4"
-    >
-      <div class="text-[13px] text-cms-muted">
-        Total {{ txData.pagination.total }} transaksi · Halaman {{ txData.pagination.page }} dari {{ txData.pagination.totalPages }}
-      </div>
-      <div class="flex gap-1.5">
-        <AdminBtn
-          size="sm"
-          variant="ghost"
-          :disabled="txData.pagination.page <= 1"
-          @click="go(txData.pagination.page - 1)"
-        >
-          ← Sebelumnya
-        </AdminBtn>
-        <AdminBtn
-          size="sm"
-          variant="ghost"
-          :disabled="txData.pagination.page >= txData.pagination.totalPages"
-          @click="go(txData.pagination.page + 1)"
-        >
-          Selanjutnya →
-        </AdminBtn>
-      </div>
-    </div>
   </div>
 </template>
