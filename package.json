@@ -14,7 +14,12 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.ts",
     "health-check": "tsx scripts/health-check.ts",
-    "scheduler": "tsx scripts/scheduler.ts"
+    "scheduler": "tsx scripts/scheduler.ts",
+    "db:seed:cashbook": "tsx scripts/seed-cashbook-fake.ts",
+    "db:seed:events": "tsx scripts/seed-events-fake.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "nuxi typecheck"
   },
   "dependencies": {
     "@nuxt/eslint": "1.15.2",
@@ -22,11 +27,9 @@
     "@nuxt/ui": "4.11.3",
     "adhan": "4.4.6",
     "better-auth": "1.7.8",
-    "dayjs": "^1.11.20",
     "drizzle-orm": "0.45.4",
     "drizzle-zod": "0.8.3",
     "eslint": "^9.0.0 || ^10.0.0",
-    "hijri-js": "^1.0.25",
     "node-cron": "^4.2.1",
     "nuxt": "4.6.1",
     "postgres": "3.4.9",

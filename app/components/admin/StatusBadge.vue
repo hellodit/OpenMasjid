@@ -1,24 +1,25 @@
 <script setup lang="ts">
-import { statusLabel, type EventStatus } from '~/composables/useAdminMock'
+import { EVENT_STATUS_LABELS, type EventDisplayStatus } from '#shared/utils/events'
 
-const props = defineProps<{ status: EventStatus }>()
+const props = defineProps<{ status: EventDisplayStatus }>()
 
-const toneMap: Record<EventStatus, string> = {
-  published: 'bg-cms-green-100 text-cms-green-800',
-  draft:     'bg-[oklch(0.94_0.005_100)] text-cms-muted',
-  ongoing:   'bg-cms-info-soft text-cms-info',
-  full:      'bg-cms-rose-soft text-cms-rose',
-}
+const color = computed(() => ({
+  published: 'primary',
+  draft: 'neutral',
+  ongoing: 'info',
+  full: 'error',
+  archived: 'neutral',
+} as const)[props.status])
 </script>
 
 <template>
-  <span
-    :class="[
-      'inline-flex items-center gap-1.5 text-[11.5px] font-semibold px-2.5 py-0.5 rounded-full tracking-[0.3px] uppercase',
-      toneMap[props.status],
-    ]"
+  <UBadge
+    :color="color"
+    :variant="status === 'archived' ? 'outline' : 'subtle'"
+    size="sm"
+    class="uppercase tracking-[0.3px] font-semibold rounded-full"
   >
     <span class="w-1.5 h-1.5 rounded-full bg-current" />
-    {{ statusLabel[props.status] }}
-  </span>
+    {{ EVENT_STATUS_LABELS[status] }}
+  </UBadge>
 </template>

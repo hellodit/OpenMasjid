@@ -1,55 +1,45 @@
 <script setup lang="ts">
+/**
+ * Thin wrapper around Nuxt UI `UButton` that keeps the CMS variant names.
+ * Prefer `UButton` directly in new code.
+ */
 type Variant = 'default' | 'primary' | 'ghost' | 'danger'
 type Size = 'sm' | 'md' | 'lg'
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   variant?: Variant
   size?: Size
-  as?: 'button' | 'a'
   to?: string
   type?: 'button' | 'submit' | 'reset'
+  loading?: boolean
+  disabled?: boolean
 }>(), {
   variant: 'default',
   size: 'md',
-  as: 'button',
   type: 'button',
 })
 
-const sizeMap: Record<Size, string> = {
-  sm: 'h-8 px-3 text-[13px]',
-  md: 'h-10 px-4 text-sm',
-  lg: 'h-[46px] px-[22px] text-[15px]',
-}
+const look = computed(() => ({
+  default: { color: 'neutral', variant: 'outline' },
+  primary: { color: 'primary', variant: 'solid' },
+  ghost: { color: 'neutral', variant: 'ghost' },
+  danger: { color: 'error', variant: 'outline' },
+} as const)[props.variant])
 
-const variantMap: Record<Variant, string> = {
-  default: 'border-cms-border bg-cms-surface text-cms-ink hover:bg-cms-surface-2',
-  primary: 'border-cms-green-700 bg-cms-green-700 text-white hover:bg-cms-green-800 hover:border-cms-green-800 shadow-cms-primary',
-  ghost: 'border-transparent bg-transparent text-cms-ink hover:bg-cms-green-100',
-  danger: 'border-cms-rose-soft bg-cms-surface text-cms-rose hover:bg-cms-rose-soft',
-}
+const uiSize = computed(() => ({ sm: 'sm', md: 'md', lg: 'lg' } as const)[props.size])
 </script>
 
 <template>
-  <NuxtLink
-    v-if="to"
+  <UButton
     :to="to"
-    :class="[
-      'inline-flex items-center gap-2 rounded-cms border font-semibold whitespace-nowrap transition-colors active:translate-y-px',
-      sizeMap[size],
-      variantMap[variant],
-    ]"
-  >
-    <slot />
-  </NuxtLink>
-  <button
-    v-else
     :type="type"
-    :class="[
-      'inline-flex items-center gap-2 rounded-cms border font-semibold whitespace-nowrap transition-colors active:translate-y-px',
-      sizeMap[size],
-      variantMap[variant],
-    ]"
+    :color="look.color"
+    :variant="look.variant"
+    :size="uiSize"
+    :loading="loading"
+    :disabled="disabled"
+    class="font-semibold"
   >
     <slot />
-  </button>
+  </UButton>
 </template>
