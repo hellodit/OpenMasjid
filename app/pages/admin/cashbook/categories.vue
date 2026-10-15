@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import type { FormSubmitEvent, TabsItem } from '@nuxt/ui'
+import type { z } from 'zod'
+import { categoryCreateSchema, categoryUpdateSchema } from '#shared/schemas/cashbook'
 import {
+  apiErrorMessage,
   categoriesAsTree,
   useCashbookApi,
   useTransactionCategories,
@@ -11,105 +14,141 @@ import {
 definePageMeta({ layout: 'admin' })
 useHead({ title: 'Kategori Transaksi — Buku Kas' })
 
-const { data: catsData, refresh } = useTransactionCategories({ includeArchived: true })
+const { isAdmin } = useAuth()
+const toast = useToast()
 const api = useCashbookApi()
 
+const { data: catsData, refresh } = await useTransactionCategories({ includeArchived: true })
+
 const activeTab = ref<CategoryType>('income')
-const showForm = ref(false)
+const tabItems = [
+  { label: 'Pemasukan', value: 'income', icon: 'i-lucide-arrow-down-circle' },
+  { label: 'Pengeluaran', value: 'expense', icon: 'i-lucide-arrow-up-circle' },
+] satisfies TabsItem[]
+
+const tree = computed(() =>
+  categoriesAsTree((catsData.value ?? []).filter((c) => c.type === activeTab.value)),
+)
+
+// ── Create / edit form ────────────────────────────────────────────────
+const formOpen = ref(false)
 const editingId = ref<string | null>(null)
 const submitting = ref(false)
-const error = ref<string | null>(null)
 
-const form = reactive({
+const emptyState = (type: CategoryType = 'income', parentId: string | null = null) => ({
   name: '',
-  type: 'income' as CategoryType,
-  parentId: '' as string,
+  type,
+  parentId,
   icon: '',
   colorToken: '',
   description: '',
   sortOrder: 0,
 })
+const state = reactive(emptyState())
+const schema = computed(() => (editingId.value ? categoryUpdateSchema : categoryCreateSchema))
 
-const tabbed = computed(() => (catsData.value ?? []).filter((c) => c.type === activeTab.value))
-const tree = computed(() => categoriesAsTree(tabbed.value))
+const typeItems = [
+  { label: 'Pemasukan', value: 'income' },
+  { label: 'Pengeluaran', value: 'expense' },
+]
 
-const parentOptions = computed(() =>
-  (catsData.value ?? []).filter(
-    (c) => c.type === form.type && !c.parentId && c.id !== editingId.value && c.isActive,
-  ),
+const editingHasChildren = computed(
+  () => !!editingId.value && (catsData.value ?? []).some((c) => c.parentId === editingId.value),
 )
 
+const parentItems = computed(() =>
+  (catsData.value ?? [])
+    .filter((c) => c.type === state.type && !c.parentId && c.id !== editingId.value && c.isActive)
+    .map((c) => ({ label: c.name, value: c.id })),
+)
+
+watch(() => state.type, () => {
+  if (state.parentId && !parentItems.value.some((p) => p.value === state.parentId)) state.parentId = null
+})
+
 function startCreate(type: CategoryType, parentId?: string) {
-  Object.assign(form, {
-    name: '',
-    type,
-    parentId: parentId ?? '',
-    icon: '',
-    colorToken: '',
-    description: '',
-    sortOrder: 0,
-  })
+  Object.assign(state, emptyState(type, parentId ?? null))
   editingId.value = null
-  showForm.value = true
+  formOpen.value = true
 }
 
 function startEdit(cat: TransactionCategory) {
-  Object.assign(form, {
+  Object.assign(state, {
     name: cat.name,
     type: cat.type,
-    parentId: cat.parentId ?? '',
+    parentId: cat.parentId,
     icon: cat.icon ?? '',
     colorToken: cat.colorToken ?? '',
     description: cat.description ?? '',
     sortOrder: cat.sortOrder,
   })
   editingId.value = cat.id
-  showForm.value = true
+  formOpen.value = true
 }
 
-async function submit() {
-  error.value = null
+async function onSubmit(event: FormSubmitEvent<z.output<typeof categoryCreateSchema>>) {
   submitting.value = true
   try {
-    const payload = {
-      name: form.name,
-      type: form.type,
-      parentId: form.parentId || null,
-      icon: form.icon.trim() || null,
-      colorToken: form.colorToken.trim() || null,
-      description: form.description.trim() || null,
-      sortOrder: form.sortOrder,
-    }
     if (editingId.value) {
-      await api.updateCategory(editingId.value, payload)
+      const { type: _type, ...body } = event.data
+      await api.updateCategory(editingId.value, { ...body, parentId: body.parentId ?? null })
     } else {
-      await api.createCategory(payload)
+      await api.createCategory(event.data)
     }
-    showForm.value = false
+    toast.add({
+      color: 'success',
+      icon: 'i-lucide-check-circle',
+      title: editingId.value ? 'Kategori diperbarui' : 'Kategori dibuat',
+      description: event.data.name,
+    })
+    activeTab.value = event.data.type ?? activeTab.value
+    formOpen.value = false
     await refresh()
-  } catch (e: unknown) {
-    const fetchErr = e as { data?: { statusMessage?: string; data?: { errors?: string[] } } }
-    error.value =
-      fetchErr?.data?.data?.errors?.join(', ') ??
-      fetchErr?.data?.statusMessage ??
-      'Gagal menyimpan kategori'
+  } catch (e) {
+    toast.add({ color: 'error', title: 'Gagal menyimpan kategori', description: apiErrorMessage(e, 'Terjadi kesalahan') })
   } finally {
     submitting.value = false
   }
 }
 
-async function archive(id: string) {
-  if (!confirm('Arsipkan kategori ini? Transaksi historis tetap merujuk ke kategori ini.')) return
+// ── Archive / restore ─────────────────────────────────────────────────
+const archiveTarget = ref<TransactionCategory | null>(null)
+const archiveOpen = computed({
+  get: () => !!archiveTarget.value,
+  set: (v) => { if (!v) archiveTarget.value = null },
+})
+const archiving = ref(false)
+
+async function confirmArchive() {
+  const target = archiveTarget.value
+  if (!target) return
+  archiving.value = true
   try {
-    await api.deleteCategory(id)
+    const res = await api.deleteCategory(target.id)
+    toast.add({
+      color: 'success',
+      icon: 'i-lucide-archive',
+      title: 'archived' in res ? 'Kategori diarsipkan' : 'Kategori dihapus',
+      description: target.name,
+    })
+    archiveTarget.value = null
     await refresh()
-  } catch {
-    error.value = 'Gagal mengarsipkan kategori'
+  } catch (e) {
+    toast.add({ color: 'error', title: 'Gagal mengarsipkan kategori', description: apiErrorMessage(e, 'Terjadi kesalahan') })
+  } finally {
+    archiving.value = false
   }
 }
 
-const inputCls =
-  'w-full h-10 px-3 border border-cms-border rounded-cms bg-cms-surface text-sm text-cms-ink outline-none focus:border-cms-green-700'
+async function restore(cat: TransactionCategory) {
+  try {
+    await api.updateCategory(cat.id, { isActive: true })
+    toast.add({ color: 'success', icon: 'i-lucide-archive-restore', title: 'Kategori diaktifkan kembali', description: cat.name })
+    await refresh()
+  } catch (e) {
+    toast.add({ color: 'error', title: 'Gagal mengaktifkan kategori', description: apiErrorMessage(e, 'Terjadi kesalahan') })
+  }
+}
 </script>
 
 <template>
@@ -120,90 +159,40 @@ const inputCls =
       description="Atur kategori untuk pemasukan dan pengeluaran. Maksimal 2 level hierarki."
     >
       <template #actions>
-        <AdminBtn variant="primary" @click="startCreate(activeTab)">
-          <Icon name="lucide:plus" size="16" /> Kategori Baru
-        </AdminBtn>
+        <UButton
+          v-if="isAdmin"
+          icon="i-lucide-plus"
+          label="Kategori Baru"
+          class="font-semibold"
+          @click="startCreate(activeTab)"
+        />
       </template>
     </AdminPageHeader>
 
+    <UTabs
+      v-model="activeTab"
+      :items="tabItems"
+      :content="false"
+      color="neutral"
+      variant="pill"
+      class="mb-4 w-fit"
+    />
+
     <div
-      v-if="error"
-      class="mb-4 flex items-start gap-2 rounded-cms border border-cms-rose-soft bg-cms-rose-soft text-cms-rose px-3 py-2.5 text-[13px]"
+      v-if="!tree.length"
+      class="text-cms-muted text-sm py-12 text-center bg-cms-surface border border-cms-border rounded-cms-lg"
     >
-      <Icon name="lucide:alert-circle" class="mt-0.5 shrink-0" />
-      <span>{{ error }}</span>
-    </div>
-
-    <div class="inline-flex gap-1 p-1 bg-cms-surface-2 rounded-cms border border-cms-border mb-4">
-      <button
-        v-for="t in ['income', 'expense'] as const"
-        :key="t"
-        type="button"
-        :class="[
-          'h-9 px-4 rounded-cms-sm text-sm font-semibold',
-          activeTab === t ? 'bg-cms-surface text-cms-ink shadow-sm' : 'text-cms-muted hover:text-cms-ink',
-        ]"
-        @click="activeTab = t"
-      >
-        {{ t === 'income' ? 'Pemasukan' : 'Pengeluaran' }}
-      </button>
-    </div>
-
-    <div v-if="showForm" class="mb-6 max-w-2xl">
-      <AdminPanel :title="editingId ? 'Edit Kategori' : 'Kategori Baru'">
-        <form class="flex flex-col gap-4" @submit.prevent="submit">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <AdminFormField label="Nama" required>
-              <input v-model="form.name" type="text" placeholder="cth: Infaq Jum'at" :class="inputCls">
-            </AdminFormField>
-            <AdminFormField label="Tipe" required>
-              <select v-model="form.type" :class="inputCls" :disabled="!!editingId">
-                <option value="income">Pemasukan</option>
-                <option value="expense">Pengeluaran</option>
-              </select>
-            </AdminFormField>
-            <AdminFormField label="Parent" hint="kosongkan untuk kategori top-level">
-              <select v-model="form.parentId" :class="inputCls">
-                <option value="">— Top Level —</option>
-                <option v-for="p in parentOptions" :key="p.id" :value="p.id">{{ p.name }}</option>
-              </select>
-            </AdminFormField>
-            <AdminFormField label="Urutan">
-              <input v-model.number="form.sortOrder" type="number" min="0" :class="inputCls">
-            </AdminFormField>
-            <AdminFormField label="Icon" hint="cth: lucide:heart">
-              <input v-model="form.icon" type="text" :class="inputCls">
-            </AdminFormField>
-            <AdminFormField label="Warna (CSS)" hint="cth: #16a34a">
-              <input v-model="form.colorToken" type="text" :class="inputCls">
-            </AdminFormField>
-            <AdminFormField label="Deskripsi" hint="opsional" class="md:col-span-2">
-              <textarea v-model="form.description" rows="2" :class="[inputCls, 'h-auto py-2']" />
-            </AdminFormField>
-          </div>
-          <div class="flex justify-end gap-2 pt-2">
-            <AdminBtn type="button" variant="ghost" @click="showForm = false">Batal</AdminBtn>
-            <AdminBtn type="submit" variant="primary" :disabled="submitting">
-              <Icon v-if="submitting" name="lucide:loader-2" class="animate-spin" size="16" />
-              Simpan
-            </AdminBtn>
-          </div>
-        </form>
-      </AdminPanel>
-    </div>
-
-    <div v-if="!tree.length" class="text-cms-muted text-sm py-12 text-center bg-cms-surface border border-cms-border rounded-cms-lg">
       Belum ada kategori {{ activeTab === 'income' ? 'pemasukan' : 'pengeluaran' }}.
     </div>
 
     <div v-else class="bg-cms-surface border border-cms-border rounded-cms-lg overflow-hidden">
-      <ul>
+      <ul class="m-0 p-0 list-none">
         <li
           v-for="node in tree"
           :key="node.id"
           class="border-b border-cms-border last:border-b-0"
         >
-          <div class="flex items-center gap-3 px-4 py-3">
+          <div :class="['flex items-center gap-3 px-4 py-3', !node.isActive && 'opacity-60']">
             <Icon
               :name="node.icon ?? 'lucide:tag'"
               size="18"
@@ -212,30 +201,34 @@ const inputCls =
             <div class="flex-1 min-w-0">
               <div class="font-semibold text-cms-ink">
                 {{ node.name }}
-                <span v-if="!node.isActive" class="ml-2 text-[11px] font-normal text-cms-muted">(arsip)</span>
+                <UBadge v-if="!node.isActive" color="neutral" variant="outline" size="sm" label="Arsip" class="ml-2" />
               </div>
               <div v-if="node.description" class="text-[12.5px] text-cms-muted truncate">
                 {{ node.description }}
               </div>
             </div>
-            <div class="flex gap-1">
-              <AdminBtn size="sm" variant="ghost" @click="startCreate(node.type, node.id)">
-                <Icon name="lucide:plus" size="14" /> Sub
-              </AdminBtn>
-              <AdminBtn size="sm" variant="ghost" @click="startEdit(node)">
-                <Icon name="lucide:edit-2" size="14" />
-              </AdminBtn>
-              <AdminBtn size="sm" variant="ghost" @click="archive(node.id)">
-                <Icon name="lucide:archive" size="14" />
-              </AdminBtn>
+            <div v-if="isAdmin" class="flex gap-1">
+              <template v-if="node.isActive">
+                <UButton size="sm" color="neutral" variant="ghost" icon="i-lucide-plus" label="Sub" @click="startCreate(node.type, node.id)" />
+                <UButton size="sm" color="neutral" variant="ghost" icon="i-lucide-pencil" aria-label="Edit" @click="startEdit(node)" />
+                <UButton size="sm" color="neutral" variant="ghost" icon="i-lucide-archive" aria-label="Arsipkan" @click="archiveTarget = node" />
+              </template>
+              <UButton
+                v-else
+                size="sm"
+                variant="ghost"
+                icon="i-lucide-archive-restore"
+                label="Aktifkan"
+                @click="restore(node)"
+              />
             </div>
           </div>
 
-          <ul v-if="node.children.length" class="bg-cms-surface-2/40 border-t border-cms-border">
+          <ul v-if="node.children.length" class="m-0 p-0 list-none bg-cms-surface-2/40 border-t border-cms-border">
             <li
               v-for="child in node.children"
               :key="child.id"
-              class="flex items-center gap-3 px-4 py-2.5 pl-12 border-b border-cms-border last:border-b-0"
+              :class="['flex items-center gap-3 px-4 py-2.5 pl-12 border-b border-cms-border last:border-b-0', !child.isActive && 'opacity-60']"
             >
               <Icon
                 :name="child.icon ?? 'lucide:corner-down-right'"
@@ -245,21 +238,107 @@ const inputCls =
               <div class="flex-1 min-w-0">
                 <div class="text-sm text-cms-ink-2">
                   {{ child.name }}
-                  <span v-if="!child.isActive" class="ml-1.5 text-[11px] text-cms-muted">(arsip)</span>
+                  <UBadge v-if="!child.isActive" color="neutral" variant="outline" size="sm" label="Arsip" class="ml-1.5" />
                 </div>
               </div>
-              <div class="flex gap-1">
-                <AdminBtn size="sm" variant="ghost" @click="startEdit(child)">
-                  <Icon name="lucide:edit-2" size="14" />
-                </AdminBtn>
-                <AdminBtn size="sm" variant="ghost" @click="archive(child.id)">
-                  <Icon name="lucide:archive" size="14" />
-                </AdminBtn>
+              <div v-if="isAdmin" class="flex gap-1">
+                <template v-if="child.isActive">
+                  <UButton size="sm" color="neutral" variant="ghost" icon="i-lucide-pencil" aria-label="Edit" @click="startEdit(child)" />
+                  <UButton size="sm" color="neutral" variant="ghost" icon="i-lucide-archive" aria-label="Arsipkan" @click="archiveTarget = child" />
+                </template>
+                <UButton
+                  v-else
+                  size="sm"
+                  variant="ghost"
+                  icon="i-lucide-archive-restore"
+                  label="Aktifkan"
+                  @click="restore(child)"
+                />
               </div>
             </li>
           </ul>
         </li>
       </ul>
     </div>
+
+    <UModal
+      v-model:open="formOpen"
+      :title="editingId ? 'Edit Kategori' : 'Kategori Baru'"
+      :ui="{ content: 'sm:max-w-2xl' }"
+    >
+      <template #body>
+        <UForm :schema="schema" :state="state" class="flex flex-col gap-4" @submit="onSubmit">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <UFormField label="Nama" name="name" required>
+              <UInput v-model="state.name" placeholder="cth: Infaq Jum'at" class="w-full" />
+            </UFormField>
+            <UFormField
+              label="Tipe"
+              name="type"
+              required
+              :help="editingId ? 'Tipe tidak dapat diubah.' : undefined"
+            >
+              <USelect v-model="state.type" :items="typeItems" :disabled="!!editingId" class="w-full" />
+            </UFormField>
+            <UFormField
+              label="Parent"
+              name="parentId"
+              :hint="editingHasChildren ? undefined : 'kosongkan untuk top-level'"
+              :help="editingHasChildren ? 'Kategori ini punya sub-kategori sehingga harus tetap top-level.' : undefined"
+            >
+              <USelectMenu
+                v-model="state.parentId"
+                :items="parentItems"
+                value-key="value"
+                clear
+                :disabled="editingHasChildren"
+                placeholder="— Top Level —"
+                class="w-full"
+              />
+            </UFormField>
+            <UFormField label="Urutan" name="sortOrder">
+              <UInputNumber v-model="state.sortOrder" :min="0" :max="9999" class="w-full" />
+            </UFormField>
+            <UFormField label="Icon" name="icon" hint="cth: lucide:heart">
+              <UInput v-model="state.icon" placeholder="lucide:tag" class="w-full">
+                <template v-if="state.icon" #leading>
+                  <Icon :name="state.icon" size="16" />
+                </template>
+              </UInput>
+            </UFormField>
+            <UFormField label="Warna (CSS)" name="colorToken" hint="cth: #16a34a">
+              <UInput v-model="state.colorToken" placeholder="#16a34a" class="w-full">
+                <template #leading>
+                  <span
+                    class="block size-4 rounded-full border border-cms-border"
+                    :style="state.colorToken ? { background: state.colorToken } : {}"
+                  />
+                </template>
+              </UInput>
+            </UFormField>
+            <UFormField label="Deskripsi" name="description" hint="opsional" class="md:col-span-2">
+              <UTextarea v-model="state.description" :rows="2" autoresize class="w-full" />
+            </UFormField>
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <UButton color="neutral" variant="ghost" label="Batal" @click="formOpen = false" />
+            <UButton type="submit" icon="i-lucide-save" label="Simpan" :loading="submitting" class="font-semibold" />
+          </div>
+        </UForm>
+      </template>
+    </UModal>
+
+    <UModal
+      v-model:open="archiveOpen"
+      title="Arsipkan kategori?"
+      :description="`Kategori “${archiveTarget?.name ?? ''}” tidak bisa dipakai untuk transaksi baru. Transaksi lama tetap merujuk ke kategori ini; kategori yang belum dipakai akan dihapus.`"
+    >
+      <template #footer>
+        <div class="flex justify-end gap-2 w-full">
+          <UButton color="neutral" variant="ghost" label="Batal" @click="archiveTarget = null" />
+          <UButton color="error" icon="i-lucide-archive" label="Arsipkan" :loading="archiving" @click="confirmArchive" />
+        </div>
+      </template>
+    </UModal>
   </div>
 </template>

@@ -1,5 +1,6 @@
 <script lang="ts">
-import type { EventInput } from '#shared/schemas/events'
+import type { FormErrorEvent, FormSubmitEvent } from '@nuxt/ui'
+import { eventCreateSchema, type EventInput, type EventOutput } from '#shared/schemas/events'
 
 /** Minimal event shape returned by GET /api/admin/events/:id. */
 export interface EventFormSource {
@@ -93,9 +94,6 @@ export function emptyEventState(): EventFormState {
 </script>
 
 <script setup lang="ts">
-import type { FormErrorEvent, FormSubmitEvent } from '@nuxt/ui'
-import { eventCreateSchema, type EventOutput } from '#shared/schemas/events'
-
 const props = defineProps<{
   /** Existing event id → PUT; omitted → POST. */
   eventId?: string

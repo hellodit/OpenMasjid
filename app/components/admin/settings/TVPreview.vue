@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { PrayerTime } from '#shared/utils/prayer'
+import { dateInTimeZone, type PrayerTime } from '#shared/utils/prayer'
+import { formatDate } from '~/utils/format'
 
 const props = defineProps<{
   prayers: PrayerTime[]

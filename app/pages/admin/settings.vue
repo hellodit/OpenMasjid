@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { FormSubmitEvent } from '@nuxt/ui'
+import type { z } from 'zod'
 import { mosqueSettingsSchema, type MosqueSettingsInput } from '#shared/schemas/mosque'
 import type { PrayerTime } from '#shared/utils/prayer'
 
@@ -60,10 +61,11 @@ function reset() {
 
 /* ── Save ──────────────────────────────────────────────────────────── */
 const saving = ref(false)
-async function onSubmit(event: FormSubmitEvent<typeof mosqueSettingsSchema>) {
+async function onSubmit(event: FormSubmitEvent<z.output<typeof mosqueSettingsSchema>>) {
   saving.value = true
   try {
     const row = await $fetch('/api/admin/settings/mosque', { method: 'PUT', body: event.data })
+    if (!row) throw new Error('Respons kosong')
     const next = toState({
       ...row,
       latitude: row.latitude != null ? Number(row.latitude) : null,
@@ -169,7 +171,7 @@ const place = computed(() => [state.value?.name, state.value?.city].filter(Boole
       variant="soft"
       icon="i-lucide-triangle-alert"
       title="Gagal memuat pengaturan masjid"
-      :description="error?.data?.statusMessage ?? error?.message"
+      :description="(error?.data as { statusMessage?: string } | undefined)?.statusMessage ?? error?.message"
     />
 
     <template v-else>

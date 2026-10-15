@@ -25,11 +25,10 @@ const props = defineProps<{
 const emit = defineEmits<{ 'update:modelValue': [value: TransactionFilterValue] }>()
 
 function patch(next: Partial<TransactionFilterValue>) {
-  const merged: TransactionFilterValue = { ...props.modelValue, ...next }
   // Drop empty values so they don't end up in the query string.
-  for (const key of Object.keys(merged) as Array<keyof TransactionFilterValue>) {
-    if (merged[key] === '' || merged[key] === null || merged[key] === undefined) delete merged[key]
-  }
+  const merged = Object.fromEntries(
+    Object.entries({ ...props.modelValue, ...next }).filter(([, v]) => v !== '' && v !== null && v !== undefined),
+  ) as TransactionFilterValue
   emit('update:modelValue', merged)
 }
 

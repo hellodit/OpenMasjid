@@ -3,6 +3,17 @@ import type { MosqueSettingsInput } from '#shared/schemas/mosque'
 
 const state = defineModel<MosqueSettingsInput>('state', { required: true })
 
+/* UInput wants `string`; the schema stores empty text as `null`. */
+const TEXT_KEYS = [
+  'arabicName', 'tagline', 'addressLine', 'city', 'province', 'postalCode', 'phone', 'email', 'whatsapp',
+  'websiteUrl', 'instagramUrl', 'youtubeUrl', 'facebookUrl', 'tiktokUrl',
+] as const
+type TextKey = (typeof TEXT_KEYS)[number]
+const text = reactive(Object.fromEntries(TEXT_KEYS.map(k => [k, computed({
+  get: () => state.value[k] ?? '',
+  set: (v: string) => { state.value[k] = v },
+})])) as unknown as Record<TextKey, string>)
+
 const TIMEZONES = [
   { label: 'WIB — Asia/Jakarta (UTC+7)', value: 'Asia/Jakarta' },
   { label: 'WITA — Asia/Makassar (UTC+8)', value: 'Asia/Makassar' },
@@ -34,7 +45,7 @@ const coordFormat = { maximumFractionDigits: 6 }
         </UFormField>
         <UFormField label="Nama dalam Bahasa Arab" name="arabicName" hint="opsional">
           <UInput
-            v-model="state.arabicName"
+            v-model="text.arabicName"
             :ui="{ ...ui, base: 'font-arab text-right text-base' }"
             size="lg"
             dir="rtl"
@@ -71,7 +82,7 @@ const coordFormat = { maximumFractionDigits: 6 }
         help="Maksimum 200 karakter. Ditampilkan pada halaman publik dan TV display."
       >
         <UTextarea
-          v-model="state.tagline"
+          v-model="text.tagline"
           :rows="3"
           :maxlength="200"
           autoresize
@@ -87,31 +98,31 @@ const coordFormat = { maximumFractionDigits: 6 }
     >
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-3.5">
         <UFormField label="Telepon" name="phone">
-          <UInput v-model="state.phone" icon="i-lucide-phone" :ui="ui" size="lg" />
+          <UInput v-model="text.phone" icon="i-lucide-phone" :ui="ui" size="lg" />
         </UFormField>
         <UFormField label="WhatsApp" name="whatsapp">
-          <UInput v-model="state.whatsapp" icon="i-lucide-message-circle" :ui="ui" size="lg" />
+          <UInput v-model="text.whatsapp" icon="i-lucide-message-circle" :ui="ui" size="lg" />
         </UFormField>
         <UFormField label="Email" name="email">
-          <UInput v-model="state.email" type="email" icon="i-lucide-mail" :ui="ui" size="lg" />
+          <UInput v-model="text.email" type="email" icon="i-lucide-mail" :ui="ui" size="lg" />
         </UFormField>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
         <UFormField label="Website" name="websiteUrl">
-          <UInput v-model="state.websiteUrl" icon="i-lucide-globe" placeholder="https://…" :ui="ui" size="lg" />
+          <UInput v-model="text.websiteUrl" icon="i-lucide-globe" placeholder="https://…" :ui="ui" size="lg" />
         </UFormField>
         <UFormField label="Instagram" name="instagramUrl">
-          <UInput v-model="state.instagramUrl" icon="i-lucide-instagram" placeholder="https://instagram.com/…" :ui="ui" size="lg" />
+          <UInput v-model="text.instagramUrl" icon="i-lucide-instagram" placeholder="https://instagram.com/…" :ui="ui" size="lg" />
         </UFormField>
         <UFormField label="YouTube" name="youtubeUrl">
-          <UInput v-model="state.youtubeUrl" icon="i-lucide-youtube" placeholder="https://youtube.com/@…" :ui="ui" size="lg" />
+          <UInput v-model="text.youtubeUrl" icon="i-lucide-youtube" placeholder="https://youtube.com/@…" :ui="ui" size="lg" />
         </UFormField>
         <UFormField label="Facebook" name="facebookUrl">
-          <UInput v-model="state.facebookUrl" icon="i-lucide-facebook" placeholder="https://facebook.com/…" :ui="ui" size="lg" />
+          <UInput v-model="text.facebookUrl" icon="i-lucide-facebook" placeholder="https://facebook.com/…" :ui="ui" size="lg" />
         </UFormField>
         <UFormField label="TikTok" name="tiktokUrl">
-          <UInput v-model="state.tiktokUrl" icon="i-lucide-music-2" placeholder="https://tiktok.com/@…" :ui="ui" size="lg" />
+          <UInput v-model="text.tiktokUrl" icon="i-lucide-music-2" placeholder="https://tiktok.com/@…" :ui="ui" size="lg" />
         </UFormField>
       </div>
     </AdminFormSection>
@@ -121,18 +132,18 @@ const coordFormat = { maximumFractionDigits: 6 }
       description="Alamat lengkap dan koordinat geografis untuk perhitungan waktu sholat otomatis."
     >
       <UFormField label="Alamat" name="addressLine" class="mb-3.5">
-        <UInput v-model="state.addressLine" :ui="ui" size="lg" />
+        <UInput v-model="text.addressLine" :ui="ui" size="lg" />
       </UFormField>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-3.5">
         <UFormField label="Kota / Kabupaten" name="city">
-          <UInput v-model="state.city" :ui="ui" size="lg" />
+          <UInput v-model="text.city" :ui="ui" size="lg" />
         </UFormField>
         <UFormField label="Provinsi" name="province">
-          <UInput v-model="state.province" :ui="ui" size="lg" />
+          <UInput v-model="text.province" :ui="ui" size="lg" />
         </UFormField>
         <UFormField label="Kode Pos" name="postalCode">
-          <UInput v-model="state.postalCode" :ui="ui" size="lg" />
+          <UInput v-model="text.postalCode" :ui="ui" size="lg" />
         </UFormField>
       </div>
 

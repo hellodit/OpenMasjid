@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { InternalApi } from 'nitropack/types'
+import { formatDate, initials, timeAgo } from '~/utils/format'
 import { REGISTRANT_STATUS_LABELS, type RegistrantStatus } from '#shared/utils/events'
 
 export type RegistrantRow = InternalApi['/api/admin/registrants']['get']['data'][number]

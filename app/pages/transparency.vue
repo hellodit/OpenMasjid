@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { usePublicCashbookSummary } from '~/composables/useCashbook'
 import { formatDate } from '~/utils/format'
+import PublicCashbookSummary from '~/components/display/PublicCashbookSummary.vue'
 
 const { data: mosque } = useFetch('/api/public/mosque', { key: 'public-mosque' })
 const masjidName = computed(() => mosque.value?.name ?? 'Masjid')
