@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import type {
-  CashAccount,
-  TransactionCategory,
-  TxType,
+import type { FormError, FormSubmitEvent, SelectMenuItem } from '@nuxt/ui'
+import type { z } from 'zod'
+import { transactionCreateSchema } from '#shared/schemas/cashbook'
+import {
+  categoriesAsTree,
+  type CashAccount,
+  type TransactionCategory,
+  type TxType,
 } from '~/composables/useCashbook'
-import { todayIso } from '~/utils/format'
+
+export type TransactionFormOutput = z.output<typeof transactionCreateSchema>
 
 const props = defineProps<{
   accounts: CashAccount[]
@@ -21,177 +25,205 @@ const props = defineProps<{
     referenceNumber?: string | null
     attachmentUrl?: string | null
   } | null
+  /** In edit mode the type is fixed (the API does not allow changing it). */
+  lockType?: boolean
   submitting?: boolean
   submitLabel?: string
 }>()
 
 const emit = defineEmits<{
-  submit: [payload: Record<string, unknown>]
+  submit: [payload: TransactionFormOutput]
   cancel: []
 }>()
 
-const type = ref<TxType>(props.initial?.type ?? 'income')
-const transactionDate = ref(props.initial?.transactionDate ?? todayIso())
-const accountId = ref(props.initial?.accountId ?? '')
-const destinationAccountId = ref(props.initial?.destinationAccountId ?? '')
-const categoryId = ref(props.initial?.categoryId ?? '')
-const amount = ref(props.initial?.amount ?? '')
-const description = ref(props.initial?.description ?? '')
-const referenceNumber = ref(props.initial?.referenceNumber ?? '')
-const attachmentUrl = ref(props.initial?.attachmentUrl ?? '')
-const error = ref<string | null>(null)
-
-const filteredCategories = computed(() =>
-  props.categories.filter((c) => c.type === type.value && c.isActive),
-)
-
-const destAccountOptions = computed(() =>
-  props.accounts.filter((a) => a.id !== accountId.value),
-)
-
-watch(type, () => {
-  categoryId.value = ''
-  destinationAccountId.value = ''
+const state = reactive({
+  type: (props.initial?.type ?? 'income') as TxType,
+  transactionDate: props.initial?.transactionDate ?? todayIso(),
+  accountId: props.initial?.accountId ?? undefined,
+  destinationAccountId: props.initial?.destinationAccountId ?? undefined,
+  categoryId: props.initial?.categoryId ?? undefined,
+  amount: props.initial?.amount ?? '',
+  description: props.initial?.description ?? '',
+  referenceNumber: props.initial?.referenceNumber ?? '',
+  attachmentUrl: props.initial?.attachmentUrl ?? '',
 })
 
-function submit() {
-  error.value = null
-  if (!transactionDate.value) return (error.value = 'Tanggal wajib diisi')
-  if (!accountId.value) return (error.value = 'Akun sumber wajib dipilih')
-  if (!amount.value || Number(amount.value) <= 0) return (error.value = 'Nominal harus > 0')
-  if (!description.value.trim()) return (error.value = 'Deskripsi wajib diisi')
+const typeOptions = [
+  { v: 'income', label: 'Pemasukan', icon: 'i-lucide-arrow-down-circle' },
+  { v: 'expense', label: 'Pengeluaran', icon: 'i-lucide-arrow-up-circle' },
+  { v: 'transfer', label: 'Transfer', icon: 'i-lucide-repeat' },
+] as const
 
-  if (type.value === 'transfer') {
-    if (!destinationAccountId.value) return (error.value = 'Akun tujuan wajib dipilih')
-    if (destinationAccountId.value === accountId.value)
-      return (error.value = 'Akun tujuan harus berbeda dari sumber')
-  } else if (!categoryId.value) {
-    return (error.value = 'Kategori wajib dipilih')
-  }
-
-  const payload: Record<string, unknown> = {
-    type: type.value,
-    transactionDate: transactionDate.value,
-    accountId: accountId.value,
-    amount: amount.value,
-    description: description.value.trim(),
-    referenceNumber: referenceNumber.value.trim() || null,
-    attachmentUrl: attachmentUrl.value.trim() || null,
-  }
-  if (type.value === 'transfer') payload.destinationAccountId = destinationAccountId.value
-  else payload.categoryId = categoryId.value
-  emit('submit', payload)
+function setType(t: TxType) {
+  if (props.lockType || state.type === t) return
+  state.type = t
+  state.categoryId = undefined
+  state.destinationAccountId = undefined
 }
 
-const inputCls =
-  'w-full h-10 px-3 border border-cms-border rounded-cms bg-cms-surface text-sm text-cms-ink outline-none focus:border-cms-green-700'
+// Active accounts only — plus the currently selected one when editing an old
+// transaction that points at an archived account.
+const accountItems = computed(() =>
+  props.accounts
+    .filter((a) => a.isActive || a.id === props.initial?.accountId || a.id === props.initial?.destinationAccountId)
+    .map((a) => ({
+      label: a.name,
+      value: a.id,
+      description: accountTypeLabel(a.type),
+      icon: accountTypeIcon(a.type).replace('lucide:', 'i-lucide-'),
+    })),
+)
+const destAccountItems = computed(() => accountItems.value.filter((a) => a.value !== state.accountId))
+
+/** Parent categories with their children grouped underneath (separator between groups). */
+const categoryItems = computed<SelectMenuItem[][]>(() => {
+  const ofType = props.categories.filter(
+    (c) => c.type === state.type && (c.isActive || c.id === props.initial?.categoryId),
+  )
+  return categoriesAsTree(ofType).map((parent) => [
+    { label: parent.name, value: parent.id, icon: toUiIcon(parent.icon) ?? 'i-lucide-tag' },
+    ...parent.children.map((child) => ({
+      label: child.name,
+      value: child.id,
+      icon: toUiIcon(child.icon) ?? 'i-lucide-corner-down-right',
+      class: 'ps-6',
+    })),
+  ])
+})
+
+function toUiIcon(icon: string | null): string | undefined {
+  if (!icon) return undefined
+  return icon.includes(':') ? `i-${icon.replace(':', '-')}` : icon
+}
+
+function validate(s: Partial<typeof state>): FormError[] {
+  const errors: FormError[] = []
+  if (s.type === 'transfer' && s.destinationAccountId && s.destinationAccountId === s.accountId)
+    errors.push({ name: 'destinationAccountId', message: 'Akun tujuan harus berbeda dari akun sumber' })
+  return errors
+}
+
+function onSubmit(event: FormSubmitEvent<TransactionFormOutput>) {
+  emit('submit', event.data)
+}
 </script>
 
 <template>
-  <form class="flex flex-col gap-5" @submit.prevent="submit">
-    <div
-      v-if="error"
-      class="flex items-start gap-2 rounded-cms border border-cms-rose-soft bg-cms-rose-soft text-cms-rose px-3 py-2.5 text-[13px]"
-    >
-      <Icon name="lucide:alert-circle" class="mt-0.5 shrink-0" />
-      <span>{{ error }}</span>
-    </div>
-
+  <UForm
+    :schema="transactionCreateSchema"
+    :state="state"
+    :validate="validate"
+    class="flex flex-col gap-5"
+    @submit="onSubmit"
+  >
     <AdminFormSection title="Tipe Transaksi">
       <div class="grid grid-cols-3 gap-2">
-        <button
-          v-for="opt in [
-            { v: 'income', label: 'Pemasukan', icon: 'lucide:arrow-down-circle' },
-            { v: 'expense', label: 'Pengeluaran', icon: 'lucide:arrow-up-circle' },
-            { v: 'transfer', label: 'Transfer', icon: 'lucide:repeat' },
-          ] as const"
+        <UButton
+          v-for="opt in typeOptions"
           :key="opt.v"
           type="button"
-          :class="[
-            'flex items-center justify-center gap-2 h-11 rounded-cms border font-semibold text-sm transition-colors',
-            type === opt.v
-              ? 'border-cms-green-700 bg-cms-green-100 text-cms-green-800'
-              : 'border-cms-border bg-cms-surface text-cms-ink-2 hover:bg-cms-surface-2',
-          ]"
-          @click="type = opt.v"
-        >
-          <Icon :name="opt.icon" size="16" />
-          {{ opt.label }}
-        </button>
+          size="lg"
+          block
+          :icon="opt.icon"
+          :label="opt.label"
+          :color="state.type === opt.v ? 'primary' : 'neutral'"
+          :variant="state.type === opt.v ? 'soft' : 'outline'"
+          :disabled="lockType && state.type !== opt.v"
+          class="font-semibold"
+          @click="setType(opt.v)"
+        />
       </div>
+      <p v-if="lockType" class="text-[12px] text-cms-muted mt-2 mb-0">
+        Tipe transaksi tidak dapat diubah setelah dicatat.
+      </p>
     </AdminFormSection>
 
     <AdminFormSection title="Detail">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <AdminFormField label="Tanggal" required>
-          <input v-model="transactionDate" type="date" :class="inputCls">
-        </AdminFormField>
+        <UFormField label="Tanggal" name="transactionDate" required>
+          <UInput v-model="state.transactionDate" type="date" class="w-full" />
+        </UFormField>
 
-        <AdminFormField label="Nominal (Rp)" required>
-          <input
-            v-model="amount"
+        <UFormField label="Nominal (Rp)" name="amount" required>
+          <UInput
+            v-model="state.amount"
             type="number"
             inputmode="decimal"
             min="0"
             step="0.01"
             placeholder="0"
-            :class="inputCls"
-          >
-        </AdminFormField>
+            icon="i-lucide-banknote"
+            class="w-full"
+          />
+        </UFormField>
 
-        <AdminFormField :label="type === 'transfer' ? 'Akun Sumber' : 'Akun'" required>
-          <select v-model="accountId" :class="inputCls">
-            <option value="">Pilih akun…</option>
-            <option v-for="a in accounts" :key="a.id" :value="a.id">{{ a.name }}</option>
-          </select>
-        </AdminFormField>
+        <UFormField :label="state.type === 'transfer' ? 'Akun Sumber' : 'Akun'" name="accountId" required>
+          <USelectMenu
+            v-model="state.accountId"
+            :items="accountItems"
+            value-key="value"
+            placeholder="Pilih akun…"
+            :search-input="{ placeholder: 'Cari akun…' }"
+            class="w-full"
+          />
+        </UFormField>
 
-        <AdminFormField v-if="type === 'transfer'" label="Akun Tujuan" required>
-          <select v-model="destinationAccountId" :class="inputCls">
-            <option value="">Pilih akun tujuan…</option>
-            <option v-for="a in destAccountOptions" :key="a.id" :value="a.id">{{ a.name }}</option>
-          </select>
-        </AdminFormField>
+        <UFormField v-if="state.type === 'transfer'" label="Akun Tujuan" name="destinationAccountId" required>
+          <USelectMenu
+            v-model="state.destinationAccountId"
+            :items="destAccountItems"
+            value-key="value"
+            placeholder="Pilih akun tujuan…"
+            :search-input="{ placeholder: 'Cari akun…' }"
+            class="w-full"
+          />
+        </UFormField>
 
-        <AdminFormField v-else label="Kategori" required>
-          <select v-model="categoryId" :class="inputCls">
-            <option value="">Pilih kategori…</option>
-            <option v-for="c in filteredCategories" :key="c.id" :value="c.id">
-              {{ c.parentId ? '— ' : '' }}{{ c.name }}
-            </option>
-          </select>
-        </AdminFormField>
+        <UFormField v-else label="Kategori" name="categoryId" required>
+          <USelectMenu
+            v-model="state.categoryId"
+            :items="categoryItems"
+            value-key="value"
+            placeholder="Pilih kategori…"
+            :search-input="{ placeholder: 'Cari kategori…' }"
+            class="w-full"
+          />
+        </UFormField>
       </div>
     </AdminFormSection>
 
     <AdminFormSection title="Catatan">
       <div class="grid grid-cols-1 gap-4">
-        <AdminFormField label="Deskripsi" required>
-          <textarea
-            v-model="description"
-            rows="2"
+        <UFormField label="Deskripsi" name="description" required>
+          <UTextarea
+            v-model="state.description"
+            :rows="2"
+            autoresize
             placeholder="cth: Infaq Jum'at minggu ke-3 Mei"
-            :class="[inputCls, 'h-auto py-2 leading-relaxed']"
+            class="w-full"
           />
-        </AdminFormField>
+        </UFormField>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <AdminFormField label="No. Referensi / Kwitansi" hint="opsional">
-            <input v-model="referenceNumber" type="text" :class="inputCls">
-          </AdminFormField>
-          <AdminFormField label="URL Bukti" hint="opsional">
-            <input v-model="attachmentUrl" type="url" placeholder="https://…" :class="inputCls">
-          </AdminFormField>
+          <UFormField label="No. Referensi / Kwitansi" name="referenceNumber" hint="opsional">
+            <UInput v-model="state.referenceNumber" class="w-full" />
+          </UFormField>
+          <UFormField label="URL Bukti" name="attachmentUrl" hint="opsional">
+            <UInput v-model="state.attachmentUrl" type="url" placeholder="https://…" icon="i-lucide-link" class="w-full" />
+          </UFormField>
         </div>
       </div>
     </AdminFormSection>
 
     <div class="flex justify-end gap-2 pt-2">
-      <AdminBtn type="button" variant="ghost" @click="emit('cancel')">Batal</AdminBtn>
-      <AdminBtn type="submit" variant="primary" :disabled="submitting">
-        <Icon v-if="submitting" name="lucide:loader-2" class="animate-spin" size="16" />
-        {{ submitLabel ?? 'Simpan Transaksi' }}
-      </AdminBtn>
+      <UButton type="button" color="neutral" variant="ghost" label="Batal" @click="emit('cancel')" />
+      <UButton
+        type="submit"
+        icon="i-lucide-save"
+        :loading="submitting"
+        :label="submitLabel ?? 'Simpan Transaksi'"
+        class="font-semibold"
+      />
     </div>
-  </form>
+  </UForm>
 </template>

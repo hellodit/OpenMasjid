@@ -1,53 +1,93 @@
 <script setup lang="ts">
-import type { CategoryId } from '~/composables/useAdminMock'
+import { dateParts, formatDate, formatTimeRange } from '~/utils/format'
 
 definePageMeta({ layout: false })
+
+const { data: mosque } = useFetch('/api/public/mosque', { key: 'public-mosque' })
+const { data: events, pending: eventsPending } = useFetch('/api/public/events', {
+  key: 'portal-events',
+  query: { limit: 50 },
+})
+
+const { now, timeHHMM, gregorianDate, hijriDate, zoneLabel } = useDisplayClock(() => mosque.value?.timezone)
+const { prayers, next, sunrise, countdown } = usePrayerSchedule(now)
+
+const masjidName = computed(() => mosque.value?.name ?? 'OpenMasjid')
+const addressMain = computed(() => mosque.value?.addressLine || mosque.value?.city || null)
+const addressSub = computed(() => {
+  if (!mosque.value) return null
+  const parts = mosque.value.addressLine
+    ? [mosque.value.city, mosque.value.province, mosque.value.postalCode]
+    : [mosque.value.province, mosque.value.postalCode]
+  return parts.filter(Boolean).join(', ') || null
+})
+const fullAddress = computed(() => [addressMain.value, addressSub.value].filter(Boolean).join(', '))
+const mapsUrl = computed(() => {
+  const m = mosque.value
+  if (!m) return null
+  if (m.latitude != null && m.longitude != null) return `https://www.google.com/maps/search/?api=1&query=${m.latitude},${m.longitude}`
+  return fullAddress.value ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${m.name}, ${fullAddress.value}`)}` : null
+})
+const whatsappUrl = computed(() => {
+  const wa = mosque.value?.whatsapp?.replace(/\D/g, '')
+  if (!wa) return null
+  return `https://wa.me/${wa.startsWith('0') ? `62${wa.slice(1)}` : wa}`
+})
+const socials = computed(() => {
+  const m = mosque.value
+  if (!m) return []
+  return [
+    { url: m.websiteUrl, icon: 'i-lucide-globe', label: 'Website' },
+    { url: m.instagramUrl, icon: 'i-lucide-instagram', label: 'Instagram' },
+    { url: m.youtubeUrl, icon: 'i-lucide-youtube', label: 'YouTube' },
+    { url: m.facebookUrl, icon: 'i-lucide-facebook', label: 'Facebook' },
+    { url: m.tiktokUrl, icon: 'i-lucide-music-2', label: 'TikTok' },
+  ].filter((s): s is { url: string, icon: string, label: string } => !!s.url)
+})
+
 useHead({
-  title: 'Masjid Al-Hikmah — OpenMasjid',
+  title: () => `${masjidName.value} — OpenMasjid`,
   htmlAttrs: { lang: 'id' },
   meta: [
     { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
     { name: 'theme-color', content: '#1f3b2d' },
-    { name: 'description', content: 'Profil, jadwal sholat, dan kegiatan rutin Masjid Al-Hikmah.' },
+    { name: 'description', content: () => `Profil, jadwal sholat, dan kegiatan ${masjidName.value}.` },
   ],
 })
 
-const { now, timeHHMM, gregorianDate, hijriDate } = useDisplayClock()
-const { prayers, next, countdown } = usePrayerSchedule(now)
-const { EVENTS, CATEGORIES } = useAdminMock()
+type PublicEvent = NonNullable<typeof events.value>[number]
 
-const masjid = {
-  name: 'Masjid Al-Hikmah',
-  arabic: 'مسجد الحكمة',
-  tagline: 'Tempat berhimpun jamaah, menjaga ibadah, dan merawat ilmu.',
-  address: "Jl. KH. Hasyim Asy'ari No. 24, Sukamaju, Jakarta Selatan",
-  district: 'RW 03 / Kelurahan Sukamaju',
-  phone: '+62 21 8500 1234',
-  email: 'dkm@openmasjid.id',
-  hours: 'Setiap hari · 04:00 — 22:00',
-  jumatTime: "Jumat · Adzan 11:45 · Khutbah 12:00",
-  capacity: '1.200 jamaah',
-  founded: '1987',
+const categories = computed(() => {
+  const map = new Map<string, NonNullable<PublicEvent['category']>>()
+  for (const ev of events.value ?? []) {
+    if (ev.category && !map.has(ev.category.slug)) map.set(ev.category.slug, ev.category)
+  }
+  return [...map.values()]
+})
+
+const activeFilter = ref<string>('all')
+
+const filteredEvents = computed(() => {
+  const list = events.value ?? []
+  return activeFilter.value === 'all'
+    ? list
+    : list.filter(e => e.category?.slug === activeFilter.value)
+})
+
+function registrationTone(ev: PublicEvent): { label: string, cls: string } {
+  if (ev.displayStatus === 'full') return { label: 'Kuota penuh', cls: 'bg-cms-rose-soft text-cms-rose' }
+  if (ev.displayStatus === 'ongoing') return { label: 'Sedang berjalan', cls: 'bg-cms-gold-soft text-cms-gold-ink' }
+  if (!ev.requiresRegistration) return { label: 'Terbuka untuk umum', cls: 'bg-cms-info-soft text-cms-info' }
+  if (mosque.value && !mosque.value.isRegistrationOpen) return { label: 'Pendaftaran ditutup', cls: 'bg-cms-surface-2 text-cms-muted' }
+  return { label: 'Pendaftaran dibuka', cls: 'bg-cms-green-100 text-cms-green-800' }
 }
 
-type FilterId = 'all' | CategoryId
-const activeFilter = ref<FilterId>('all')
-
-const publicEvents = computed(() =>
-  EVENTS.filter(e => e.status === 'published' || e.status === 'ongoing'),
-)
-
-const filteredEvents = computed(() =>
-  activeFilter.value === 'all'
-    ? publicEvents.value
-    : publicEvents.value.filter(e => e.cat === activeFilter.value),
-)
-
-const statusTone: Record<string, { label: string, cls: string }> = {
-  published: { label: 'Pendaftaran dibuka', cls: 'bg-cms-green-100 text-cms-green-800' },
-  ongoing:   { label: 'Sedang berjalan',    cls: 'bg-cms-gold-soft text-cms-gold-ink' },
-  full:      { label: 'Kuota penuh',        cls: 'bg-cms-rose-soft text-cms-rose' },
-  draft:     { label: 'Akan datang',        cls: 'bg-cms-info-soft text-cms-info' },
+function eventSchedule(ev: PublicEvent): string {
+  const time = formatTimeRange(ev.startTime, ev.endTime)
+  if (ev.endDate && ev.endDate !== ev.startDate) {
+    return [`s.d. ${formatDate(ev.endDate)}`, time].filter(Boolean).join(' · ')
+  }
+  return time
 }
 </script>
 
@@ -63,27 +103,30 @@ const statusTone: Record<string, { label: string, cls: string }> = {
         </div>
         <div class="min-w-0 flex-1">
           <div class="font-serif text-[15px] font-semibold leading-tight truncate">
-            {{ masjid.name }}
+            {{ masjidName }}
           </div>
           <div class="text-[11px] text-cms-muted truncate">
             OpenMasjid · Profil & Kegiatan
           </div>
         </div>
-        <NuxtLink
+        <UButton
           to="/display"
           target="_blank"
-          class="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-cms-border bg-white px-3 py-1.5 text-[12px] font-semibold text-cms-green-800 hover:bg-cms-green-50 active:scale-[0.97] transition"
+          color="neutral"
+          variant="outline"
+          size="sm"
+          icon="i-lucide-tv"
+          class="shrink-0 rounded-full text-[12px] font-semibold text-cms-green-800"
           aria-label="Buka tampilan Display TV"
         >
-          <Icon name="lucide:tv" size="14" />
           <span class="hidden sm:inline">Display TV</span>
-        </NuxtLink>
+        </UButton>
         <div class="text-right shrink-0">
           <div class="font-mono text-[14px] font-semibold tabular-nums text-cms-ink">
             {{ timeHHMM }}
           </div>
           <div class="text-[10px] uppercase tracking-[0.8px] text-cms-muted">
-            WIB
+            {{ zoneLabel }}
           </div>
         </div>
       </div>
@@ -101,31 +144,42 @@ const statusTone: Record<string, { label: string, cls: string }> = {
         <div class="text-[11px] uppercase tracking-[2px] text-cms-gold-soft font-semibold mb-3">
           Assalamualaikum
         </div>
-        <div class="font-arab text-[28px] leading-none text-cms-gold mb-4">
-          {{ masjid.arabic }}
+        <div v-if="mosque?.arabicName" class="font-arab text-[28px] leading-none text-cms-gold mb-4">
+          {{ mosque.arabicName }}
         </div>
         <h1 class="font-serif text-[28px] sm:text-[34px] leading-[1.15] font-semibold mb-3">
-          {{ masjid.name }}
+          {{ masjidName }}
         </h1>
-        <p class="text-[14.5px] leading-relaxed text-white/80 max-w-md">
-          {{ masjid.tagline }}
+        <p v-if="mosque?.tagline" class="text-[14.5px] leading-relaxed text-white/80 max-w-md">
+          {{ mosque.tagline }}
         </p>
 
         <div class="mt-6 flex flex-wrap gap-2">
-          <a
-            href="#jadwal-sholat"
-            class="inline-flex items-center gap-2 rounded-full bg-cms-gold text-cms-green-900 px-4 py-2 text-[13px] font-semibold shadow-cms-sm active:scale-[0.98] transition"
+          <UButton
+            to="#jadwal-sholat"
+            icon="i-lucide-clock"
+            class="rounded-full bg-cms-gold hover:bg-cms-gold/90 text-cms-green-900 px-4 py-2 text-[13px] font-semibold shadow-cms-sm"
           >
-            <Icon name="lucide:clock" size="15" />
             Jadwal sholat hari ini
-          </a>
-          <a
-            href="#kegiatan"
-            class="inline-flex items-center gap-2 rounded-full border border-white/25 text-white px-4 py-2 text-[13px] font-semibold active:bg-white/10 transition"
+          </UButton>
+          <UButton
+            to="#kegiatan"
+            icon="i-lucide-calendar-days"
+            variant="outline"
+            color="neutral"
+            class="rounded-full bg-transparent ring-white/25 text-white hover:bg-white/10 px-4 py-2 text-[13px] font-semibold"
           >
-            <Icon name="lucide:calendar-days" size="15" />
             Lihat kegiatan
-          </a>
+          </UButton>
+          <UButton
+            to="/transparency"
+            icon="i-lucide-wallet"
+            variant="outline"
+            color="neutral"
+            class="rounded-full bg-transparent ring-white/25 text-white hover:bg-white/10 px-4 py-2 text-[13px] font-semibold"
+          >
+            Transparansi kas
+          </UButton>
         </div>
       </div>
     </section>
@@ -135,7 +189,7 @@ const statusTone: Record<string, { label: string, cls: string }> = {
       <div class="mx-auto max-w-2xl bg-white rounded-cms-lg border border-cms-border shadow-cms overflow-hidden">
         <!-- Next prayer highlight -->
         <div class="p-5 bg-gradient-to-br from-cms-green-50 to-white border-b border-cms-border">
-          <div class="flex items-center justify-between gap-3">
+          <div v-if="next" class="flex items-center justify-between gap-3">
             <div>
               <div class="text-[11px] uppercase tracking-[1.2px] text-cms-muted font-semibold">
                 Sholat selanjutnya
@@ -159,13 +213,18 @@ const statusTone: Record<string, { label: string, cls: string }> = {
               </div>
             </div>
           </div>
+          <div v-else class="text-[13px] text-cms-muted">
+            Jadwal sholat belum tersedia.
+          </div>
           <div class="mt-3 text-[11px] text-cms-muted-2">
-            {{ gregorianDate }} · {{ hijriDate }}
+            {{ gregorianDate }} · {{ hijriDate }}<template v-if="sunrise">
+              · Terbit {{ sunrise.time }}
+            </template>
           </div>
         </div>
 
         <!-- 5-prayer grid -->
-        <ul class="grid grid-cols-5 divide-x divide-cms-border">
+        <ul v-if="prayers.length" class="grid grid-cols-5 divide-x divide-cms-border">
           <li
             v-for="p in prayers"
             :key="p.id"
@@ -197,7 +256,7 @@ const statusTone: Record<string, { label: string, cls: string }> = {
     </section>
 
     <!-- Profile card -->
-    <section class="px-4 mb-10">
+    <section v-if="mosque" class="px-4 mb-10">
       <div class="mx-auto max-w-2xl">
         <div class="flex items-center gap-2 mb-3">
           <Icon name="lucide:landmark" size="16" class="text-cms-green-700" />
@@ -205,30 +264,28 @@ const statusTone: Record<string, { label: string, cls: string }> = {
         </div>
 
         <div class="bg-white rounded-cms-lg border border-cms-border shadow-cms-sm divide-y divide-cms-border">
-          <div class="p-4 flex items-start gap-3">
+          <component
+            :is="mapsUrl ? 'a' : 'div'"
+            v-if="addressMain"
+            :href="mapsUrl ?? undefined"
+            :target="mapsUrl ? '_blank' : undefined"
+            :rel="mapsUrl ? 'noopener' : undefined"
+            class="p-4 flex items-start gap-3 active:bg-cms-surface-2 transition"
+          >
             <div class="w-9 h-9 rounded-cms bg-cms-green-100 text-cms-green-800 grid place-items-center shrink-0">
               <Icon name="lucide:map-pin" size="16" />
             </div>
             <div class="min-w-0 flex-1">
               <div class="text-[11px] uppercase tracking-[0.6px] text-cms-muted font-semibold">Alamat</div>
-              <div class="text-[14px] mt-0.5">{{ masjid.address }}</div>
-              <div class="text-[12.5px] text-cms-muted-2 mt-0.5">{{ masjid.district }}</div>
+              <div class="text-[14px] mt-0.5">{{ addressMain }}</div>
+              <div v-if="addressSub" class="text-[12.5px] text-cms-muted-2 mt-0.5">{{ addressSub }}</div>
             </div>
-          </div>
-
-          <div class="p-4 flex items-start gap-3">
-            <div class="w-9 h-9 rounded-cms bg-cms-green-100 text-cms-green-800 grid place-items-center shrink-0">
-              <Icon name="lucide:clock-3" size="16" />
-            </div>
-            <div class="min-w-0 flex-1">
-              <div class="text-[11px] uppercase tracking-[0.6px] text-cms-muted font-semibold">Jam buka</div>
-              <div class="text-[14px] mt-0.5">{{ masjid.hours }}</div>
-              <div class="text-[12.5px] text-cms-muted-2 mt-0.5">{{ masjid.jumatTime }}</div>
-            </div>
-          </div>
+            <Icon v-if="mapsUrl" name="lucide:chevron-right" size="16" class="text-cms-muted self-center" />
+          </component>
 
           <a
-            :href="`tel:${masjid.phone.replace(/\s/g, '')}`"
+            v-if="mosque.phone"
+            :href="`tel:${mosque.phone.replace(/\s/g, '')}`"
             class="p-4 flex items-start gap-3 active:bg-cms-surface-2 transition"
           >
             <div class="w-9 h-9 rounded-cms bg-cms-green-100 text-cms-green-800 grid place-items-center shrink-0">
@@ -236,13 +293,31 @@ const statusTone: Record<string, { label: string, cls: string }> = {
             </div>
             <div class="min-w-0 flex-1">
               <div class="text-[11px] uppercase tracking-[0.6px] text-cms-muted font-semibold">Telepon DKM</div>
-              <div class="text-[14px] mt-0.5 font-medium">{{ masjid.phone }}</div>
+              <div class="text-[14px] mt-0.5 font-medium">{{ mosque.phone }}</div>
             </div>
             <Icon name="lucide:chevron-right" size="16" class="text-cms-muted self-center" />
           </a>
 
           <a
-            :href="`mailto:${masjid.email}`"
+            v-if="whatsappUrl"
+            :href="whatsappUrl"
+            target="_blank"
+            rel="noopener"
+            class="p-4 flex items-start gap-3 active:bg-cms-surface-2 transition"
+          >
+            <div class="w-9 h-9 rounded-cms bg-cms-green-100 text-cms-green-800 grid place-items-center shrink-0">
+              <Icon name="lucide:message-circle" size="16" />
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="text-[11px] uppercase tracking-[0.6px] text-cms-muted font-semibold">WhatsApp</div>
+              <div class="text-[14px] mt-0.5 font-medium">{{ mosque.whatsapp }}</div>
+            </div>
+            <Icon name="lucide:chevron-right" size="16" class="text-cms-muted self-center" />
+          </a>
+
+          <a
+            v-if="mosque.email"
+            :href="`mailto:${mosque.email}`"
             class="p-4 flex items-start gap-3 active:bg-cms-surface-2 transition"
           >
             <div class="w-9 h-9 rounded-cms bg-cms-green-100 text-cms-green-800 grid place-items-center shrink-0">
@@ -250,20 +325,37 @@ const statusTone: Record<string, { label: string, cls: string }> = {
             </div>
             <div class="min-w-0 flex-1">
               <div class="text-[11px] uppercase tracking-[0.6px] text-cms-muted font-semibold">Email</div>
-              <div class="text-[14px] mt-0.5 font-medium break-all">{{ masjid.email }}</div>
+              <div class="text-[14px] mt-0.5 font-medium break-all">{{ mosque.email }}</div>
             </div>
             <Icon name="lucide:chevron-right" size="16" class="text-cms-muted self-center" />
           </a>
 
-          <div class="p-4 grid grid-cols-2 gap-3">
-            <div>
+          <div v-if="mosque.capacity || mosque.yearFounded" class="p-4 grid grid-cols-2 gap-3">
+            <div v-if="mosque.capacity">
               <div class="text-[11px] uppercase tracking-[0.6px] text-cms-muted font-semibold">Kapasitas</div>
-              <div class="text-[14px] mt-0.5 font-medium">{{ masjid.capacity }}</div>
+              <div class="text-[14px] mt-0.5 font-medium">{{ mosque.capacity.toLocaleString('id-ID') }} jamaah</div>
             </div>
-            <div>
+            <div v-if="mosque.yearFounded">
               <div class="text-[11px] uppercase tracking-[0.6px] text-cms-muted font-semibold">Berdiri sejak</div>
-              <div class="text-[14px] mt-0.5 font-medium">{{ masjid.founded }}</div>
+              <div class="text-[14px] mt-0.5 font-medium">{{ mosque.yearFounded }}</div>
             </div>
+          </div>
+
+          <div v-if="socials.length" class="p-4 flex flex-wrap gap-2">
+            <UButton
+              v-for="s in socials"
+              :key="s.label"
+              :to="s.url"
+              target="_blank"
+              rel="noopener"
+              :icon="s.icon"
+              color="neutral"
+              variant="outline"
+              size="sm"
+              class="rounded-full"
+            >
+              {{ s.label }}
+            </UButton>
           </div>
         </div>
       </div>
@@ -281,36 +373,40 @@ const statusTone: Record<string, { label: string, cls: string }> = {
         </div>
 
         <!-- Filter chips -->
-        <div class="-mx-4 px-4 mb-4 overflow-x-auto scrollbar-none">
+        <div v-if="categories.length > 1" class="-mx-4 px-4 mb-4 overflow-x-auto scrollbar-none">
           <div class="flex gap-2 w-max">
-            <button
-              type="button"
-              class="px-3.5 py-1.5 rounded-full text-[12.5px] font-semibold border transition active:scale-[0.97]"
-              :class="activeFilter === 'all'
-                ? 'bg-cms-green-800 text-white border-cms-green-800'
-                : 'bg-white text-cms-ink-2 border-cms-border'"
+            <UButton
+              :color="activeFilter === 'all' ? 'primary' : 'neutral'"
+              :variant="activeFilter === 'all' ? 'solid' : 'outline'"
+              size="sm"
+              class="rounded-full px-3.5 text-[12.5px] font-semibold"
+              :class="activeFilter === 'all' ? 'bg-cms-green-800 hover:bg-cms-green-800' : 'bg-white text-cms-ink-2'"
               @click="activeFilter = 'all'"
             >
               Semua
-            </button>
-            <button
-              v-for="c in CATEGORIES"
-              :key="c.id"
-              type="button"
-              class="px-3.5 py-1.5 rounded-full text-[12.5px] font-semibold border transition active:scale-[0.97] inline-flex items-center gap-1.5"
-              :class="activeFilter === c.id
-                ? 'bg-cms-green-800 text-white border-cms-green-800'
-                : 'bg-white text-cms-ink-2 border-cms-border'"
-              @click="activeFilter = c.id"
+            </UButton>
+            <UButton
+              v-for="c in categories"
+              :key="c.slug"
+              :color="activeFilter === c.slug ? 'primary' : 'neutral'"
+              :variant="activeFilter === c.slug ? 'solid' : 'outline'"
+              size="sm"
+              class="rounded-full px-3.5 text-[12.5px] font-semibold"
+              :class="activeFilter === c.slug ? 'bg-cms-green-800 hover:bg-cms-green-800' : 'bg-white text-cms-ink-2'"
+              @click="activeFilter = c.slug"
             >
-              <Icon :name="c.icon" size="13" />
+              <Icon v-if="c.icon" :name="c.icon" size="13" />
               {{ c.name }}
-            </button>
+            </UButton>
           </div>
         </div>
 
         <!-- Event list -->
-        <div v-if="filteredEvents.length" class="space-y-3">
+        <div v-if="eventsPending && !events" class="space-y-3">
+          <USkeleton v-for="i in 3" :key="i" class="h-36 rounded-cms-lg" />
+        </div>
+
+        <div v-else-if="filteredEvents.length" class="space-y-3">
           <article
             v-for="ev in filteredEvents"
             :key="ev.id"
@@ -320,57 +416,81 @@ const statusTone: Record<string, { label: string, cls: string }> = {
               <!-- Date block -->
               <div class="shrink-0 w-14 rounded-cms bg-cms-green-50 border border-cms-green-100 text-center py-2">
                 <div class="text-[10.5px] uppercase tracking-[0.6px] text-cms-green-700 font-semibold">
-                  {{ ev.m }}
+                  {{ dateParts(ev.startDate).m }}
                 </div>
                 <div class="font-serif text-[22px] font-semibold text-cms-green-900 leading-none mt-0.5">
-                  {{ ev.d }}
+                  {{ dateParts(ev.startDate).d }}
                 </div>
-                <div class="text-[10px] text-cms-muted mt-1">{{ ev.day }}</div>
+                <div class="text-[10px] text-cms-muted mt-1">{{ dateParts(ev.startDate).day }}</div>
               </div>
 
               <!-- Body -->
               <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-2 mb-1.5">
-                  <span class="text-[10.5px] uppercase tracking-[0.6px] text-cms-gold-ink font-semibold">
-                    {{ ev.catName }}
+                <div class="flex flex-wrap items-center gap-2 mb-1.5">
+                  <span
+                    v-if="ev.category"
+                    class="text-[10.5px] uppercase tracking-[0.6px] text-cms-gold-ink font-semibold"
+                  >
+                    {{ ev.category.name }}
                   </span>
                   <span
                     class="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-[0.4px]"
-                    :class="statusTone[ev.status].cls"
+                    :class="registrationTone(ev).cls"
                   >
-                    {{ statusTone[ev.status].label }}
+                    {{ registrationTone(ev).label }}
                   </span>
                 </div>
                 <h3 class="font-serif text-[16px] font-semibold leading-[1.25] mb-1.5">
                   {{ ev.title }}
                 </h3>
-                <p class="text-[12.5px] text-cms-ink-2 line-clamp-2 mb-2.5">
-                  {{ ev.desc }}
+                <p v-if="ev.description" class="text-[12.5px] text-cms-ink-2 line-clamp-2 mb-2.5">
+                  {{ ev.description }}
                 </p>
 
                 <div class="flex flex-wrap gap-x-3 gap-y-1 text-[11.5px] text-cms-muted-2">
-                  <span class="inline-flex items-center gap-1">
+                  <span v-if="eventSchedule(ev)" class="inline-flex items-center gap-1">
                     <Icon name="lucide:clock" size="12" />
-                    {{ ev.time }}
+                    {{ eventSchedule(ev) }}
                   </span>
-                  <span class="inline-flex items-center gap-1">
+                  <span v-if="ev.locationName" class="inline-flex items-center gap-1">
                     <Icon name="lucide:map-pin" size="12" />
-                    {{ ev.location }}
+                    {{ ev.locationName }}<template v-if="ev.locationDetail">
+                      · {{ ev.locationDetail }}
+                    </template>
+                  </span>
+                  <span v-if="ev.isLivestream" class="inline-flex items-center gap-1">
+                    <Icon name="lucide:radio" size="12" />
+                    Siaran langsung
                   </span>
                 </div>
 
-                <div class="mt-2.5 pt-2.5 border-t border-cms-border flex items-center justify-between gap-2">
+                <div
+                  v-if="ev.speakers.length || ev.capacity || ev.requiresRegistration"
+                  class="mt-2.5 pt-2.5 border-t border-cms-border flex items-center justify-between gap-2"
+                >
                   <div class="min-w-0">
-                    <div class="text-[12px] font-semibold truncate">{{ ev.speaker }}</div>
-                    <div class="text-[11px] text-cms-muted truncate">{{ ev.role }}</div>
+                    <template v-if="ev.speakers[0]">
+                      <div class="text-[12px] font-semibold truncate">{{ ev.speakers[0].name }}</div>
+                      <div v-if="ev.speakers[0].role" class="text-[11px] text-cms-muted truncate">
+                        {{ ev.speakers[0].role }}
+                      </div>
+                    </template>
+                    <div v-if="ev.capacity" class="flex items-center gap-1.5" :class="ev.speakers[0] ? 'mt-1.5' : ''">
+                      <AdminCapacityBar :attended="ev.registeredCount" :capacity="ev.capacity" />
+                      <span class="text-[11px] text-cms-muted">terdaftar</span>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    class="shrink-0 inline-flex items-center gap-1 text-[12px] font-semibold text-cms-green-800 active:text-cms-green-900"
+                  <UButton
+                    v-if="ev.requiresRegistration && ev.displayStatus !== 'full' && mosque?.isRegistrationOpen !== false"
+                    size="xs"
+                    color="neutral"
+                    variant="soft"
+                    disabled
+                    icon="i-lucide-clock-4"
+                    class="shrink-0 rounded-full"
                   >
-                    Detail
-                    <Icon name="lucide:arrow-right" size="13" />
-                  </button>
+                    Pendaftaran segera hadir
+                  </UButton>
                 </div>
               </div>
             </div>
@@ -384,7 +504,7 @@ const statusTone: Record<string, { label: string, cls: string }> = {
           <Icon name="lucide:calendar-x-2" size="22" class="text-cms-muted mx-auto mb-2" />
           <div class="text-[13.5px] font-semibold text-cms-ink-2">Belum ada kegiatan</div>
           <div class="text-[12px] text-cms-muted mt-1">
-            Tidak ada kegiatan terjadwal untuk kategori ini.
+            {{ activeFilter === 'all' ? 'Belum ada kegiatan terjadwal.' : 'Tidak ada kegiatan terjadwal untuk kategori ini.' }}
           </div>
         </div>
       </div>
@@ -399,18 +519,18 @@ const statusTone: Record<string, { label: string, cls: string }> = {
           </div>
           <div>
             <div class="font-serif text-[16px] font-semibold text-white leading-tight">
-              {{ masjid.name }}
+              {{ masjidName }}
             </div>
             <div class="text-[11px] uppercase tracking-[1.2px] text-cms-gold-soft mt-0.5">
               Powered by OpenMasjid
             </div>
           </div>
         </div>
-        <p class="text-[12.5px] leading-relaxed text-white/65 mb-5">
-          {{ masjid.address }}
+        <p v-if="fullAddress" class="text-[12.5px] leading-relaxed text-white/65 mb-5">
+          {{ fullAddress }}
         </p>
         <div class="flex items-center justify-between text-[11px] text-white/55 pt-4 border-t border-white/10">
-          <span>© {{ new Date().getFullYear() }} OpenMasjid</span>
+          <span>© {{ now.getFullYear() }} OpenMasjid</span>
           <span class="font-arab text-[14px] text-cms-gold-2">بَارَكَ اللَّهُ فِيْكُمْ</span>
         </div>
       </div>

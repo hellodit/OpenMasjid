@@ -1,177 +1,181 @@
 <script setup lang="ts">
-const nama = ref('Masjid Al-Hikmah')
-const arab = ref('مَسْجِد الْحِكْمَة')
-const tahun = ref('1987')
-const kapasitas = ref('850')
-const tagline = ref('Pusat kegiatan keagamaan dan sosial bagi jamaah di kawasan Bintaro Jaya, Tangerang Selatan.')
-const alamat = ref('Jl. Bintaro Utama Sektor 9 Blok B No. 12')
-const kota = ref('Tangerang Selatan')
-const provinsi = ref('Banten')
-const kodepos = ref('15229')
-const phone = ref('+62 21 7351 2200')
-const email = ref('dkm@alhikmah-bintaro.or.id')
-const website = ref('alhikmah-bintaro.or.id')
-const ig = ref('@masjidalhikmah.bintaro')
-const yt = ref('Masjid Al-Hikmah Bintaro')
+import type { MosqueSettingsInput } from '#shared/schemas/mosque'
 
-const pubProfile = ref(true)
-const showTv = ref(true)
-const newRegs = ref(true)
-const maintenance = ref(false)
+const state = defineModel<MosqueSettingsInput>('state', { required: true })
 
-const inputCls = 'cms-input w-full h-[42px] px-3.5 border border-cms-border rounded-cms bg-cms-surface outline-none text-sm transition-all'
-const textareaCls = 'cms-input w-full min-h-[110px] px-3.5 py-3 border border-cms-border rounded-cms bg-cms-surface outline-none text-sm leading-relaxed resize-y transition-all'
+const TIMEZONES = [
+  { label: 'WIB — Asia/Jakarta (UTC+7)', value: 'Asia/Jakarta' },
+  { label: 'WITA — Asia/Makassar (UTC+8)', value: 'Asia/Makassar' },
+  { label: 'WIT — Asia/Jayapura (UTC+9)', value: 'Asia/Jayapura' },
+]
+const timezoneItems = computed(() =>
+  TIMEZONES.some(t => t.value === state.value.timezone)
+    ? TIMEZONES
+    : [...TIMEZONES, { label: state.value.timezone, value: state.value.timezone }],
+)
+
+const mapTitle = computed(() =>
+  [state.value.addressLine, state.value.city].filter(Boolean).join(', ') || state.value.name || 'Lokasi masjid',
+)
+
+const ui = { root: 'w-full' }
+const coordFormat = { maximumFractionDigits: 6 }
 </script>
 
 <template>
-  <div class="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-[18px] items-start">
-    <div>
-      <AdminFormSection
-        title="Identitas Masjid"
-        description="Informasi utama yang ditampilkan di header CMS, TV display, dan halaman publik."
+  <div>
+    <AdminFormSection
+      title="Profil Masjid"
+      description="Informasi utama yang ditampilkan di header CMS, TV display, dan halaman publik."
+    >
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
+        <UFormField label="Nama Masjid" name="name" required>
+          <UInput v-model="state.name" :ui="ui" size="lg" />
+        </UFormField>
+        <UFormField label="Nama dalam Bahasa Arab" name="arabicName" hint="opsional">
+          <UInput
+            v-model="state.arabicName"
+            :ui="{ ...ui, base: 'font-arab text-right text-base' }"
+            size="lg"
+            dir="rtl"
+          />
+        </UFormField>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
+        <UFormField label="Tahun Berdiri" name="yearFounded">
+          <UInputNumber
+            v-model="state.yearFounded"
+            :min="600"
+            :max="2100"
+            :format-options="{ useGrouping: false }"
+            :ui="ui"
+            size="lg"
+            placeholder="cth. 1987"
+          />
+        </UFormField>
+        <UFormField label="Kapasitas Jamaah" name="capacity" help="Estimasi total kapasitas saat sholat berjamaah.">
+          <UInputNumber
+            v-model="state.capacity"
+            :min="1"
+            :ui="ui"
+            size="lg"
+            placeholder="cth. 600"
+          />
+        </UFormField>
+      </div>
+
+      <UFormField
+        label="Tagline"
+        name="tagline"
+        help="Maksimum 200 karakter. Ditampilkan pada halaman publik dan TV display."
       >
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
-          <AdminFormField label="Nama Masjid" required>
-            <input v-model="nama" :class="inputCls" type="text">
-          </AdminFormField>
-          <AdminFormField label="Nama dalam Bahasa Arab" hint="opsional">
-            <input
-              v-model="arab"
-              :class="[inputCls, 'font-serif text-right']"
-              type="text"
-              dir="rtl"
-            >
-          </AdminFormField>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
-          <AdminFormField label="Tahun Berdiri">
-            <input v-model="tahun" :class="inputCls" type="number">
-          </AdminFormField>
-          <AdminFormField
-            label="Kapasitas Jamaah"
-            help="Estimasi total kapasitas saat sholat berjamaah."
-          >
-            <input v-model="kapasitas" :class="inputCls" type="number">
-          </AdminFormField>
-        </div>
-
-        <AdminFormField
-          label="Deskripsi Singkat"
-          help="Maksimum 240 karakter. Ditampilkan pada halaman tentang dan banner publik."
-        >
-          <textarea v-model="tagline" :class="textareaCls" rows="3" />
-        </AdminFormField>
-      </AdminFormSection>
-
-      <AdminFormSection
-        title="Lokasi & Kontak"
-        description="Alamat lengkap, koordinat geografis, dan kanal kontak DKM."
-      >
-        <div class="mb-3.5">
-          <AdminFormField label="Alamat">
-            <input v-model="alamat" :class="inputCls" type="text">
-          </AdminFormField>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-3.5">
-          <AdminFormField label="Kota / Kabupaten">
-            <input v-model="kota" :class="inputCls" type="text">
-          </AdminFormField>
-          <AdminFormField label="Provinsi">
-            <input v-model="provinsi" :class="inputCls" type="text">
-          </AdminFormField>
-          <AdminFormField label="Kode Pos">
-            <input v-model="kodepos" :class="inputCls" type="text">
-          </AdminFormField>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
-          <AdminFormField label="Telepon">
-            <input v-model="phone" :class="inputCls" type="text">
-          </AdminFormField>
-          <AdminFormField label="Email">
-            <input v-model="email" :class="inputCls" type="email">
-          </AdminFormField>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-2">
-          <AdminFormField label="Website">
-            <input v-model="website" :class="inputCls" type="text">
-          </AdminFormField>
-          <AdminFormField
-            label="Koordinat (Lat, Lng)"
-            help="Digunakan untuk perhitungan waktu sholat otomatis."
-          >
-            <input :class="inputCls" type="text" value="-6.2731, 106.7196">
-          </AdminFormField>
-        </div>
-
-        <AdminSettingsMapStub
-          title="Bintaro Sektor 9, Tangerang Selatan"
-          description="−6.2731° LS, 106.7196° BT · zona waktu WIB (UTC+7)"
+        <UTextarea
+          v-model="state.tagline"
+          :rows="3"
+          :maxlength="200"
+          autoresize
+          :ui="ui"
+          size="lg"
         />
-      </AdminFormSection>
+      </UFormField>
+    </AdminFormSection>
 
-      <AdminFormSection
-        title="Media Sosial"
-        description="Tautan ditampilkan pada footer halaman publik."
-      >
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
-          <AdminFormField label="Instagram">
-            <input v-model="ig" :class="inputCls" type="text">
-          </AdminFormField>
-          <AdminFormField label="YouTube">
-            <input v-model="yt" :class="inputCls" type="text">
-          </AdminFormField>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-          <AdminFormField label="Facebook">
-            <input :class="inputCls" type="text" placeholder="https://facebook.com/…">
-          </AdminFormField>
-          <AdminFormField label="TikTok">
-            <input :class="inputCls" type="text" placeholder="@…">
-          </AdminFormField>
-        </div>
-      </AdminFormSection>
-    </div>
+    <AdminFormSection
+      title="Kontak & Media Sosial"
+      description="Kanal kontak DKM dan tautan yang ditampilkan pada halaman publik."
+    >
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-3.5">
+        <UFormField label="Telepon" name="phone">
+          <UInput v-model="state.phone" icon="i-lucide-phone" :ui="ui" size="lg" />
+        </UFormField>
+        <UFormField label="WhatsApp" name="whatsapp">
+          <UInput v-model="state.whatsapp" icon="i-lucide-message-circle" :ui="ui" size="lg" />
+        </UFormField>
+        <UFormField label="Email" name="email">
+          <UInput v-model="state.email" type="email" icon="i-lucide-mail" :ui="ui" size="lg" />
+        </UFormField>
+      </div>
 
-    <aside>
-      <AdminFormSection
-        title="Logo & Identitas Visual"
-        description="Diunggah dalam format PNG transparan, minimal 512×512 px."
-      >
-        <AdminSettingsLogoSlot filename="logo-alhikmah.png" size="512×512 · 64 KB" />
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        <UFormField label="Website" name="websiteUrl">
+          <UInput v-model="state.websiteUrl" icon="i-lucide-globe" placeholder="https://…" :ui="ui" size="lg" />
+        </UFormField>
+        <UFormField label="Instagram" name="instagramUrl">
+          <UInput v-model="state.instagramUrl" icon="i-lucide-instagram" placeholder="https://instagram.com/…" :ui="ui" size="lg" />
+        </UFormField>
+        <UFormField label="YouTube" name="youtubeUrl">
+          <UInput v-model="state.youtubeUrl" icon="i-lucide-youtube" placeholder="https://youtube.com/@…" :ui="ui" size="lg" />
+        </UFormField>
+        <UFormField label="Facebook" name="facebookUrl">
+          <UInput v-model="state.facebookUrl" icon="i-lucide-facebook" placeholder="https://facebook.com/…" :ui="ui" size="lg" />
+        </UFormField>
+        <UFormField label="TikTok" name="tiktokUrl">
+          <UInput v-model="state.tiktokUrl" icon="i-lucide-music-2" placeholder="https://tiktok.com/@…" :ui="ui" size="lg" />
+        </UFormField>
+      </div>
+    </AdminFormSection>
 
-        <AdminMotifDivider>Banner Publik</AdminMotifDivider>
+    <AdminFormSection
+      title="Alamat & Lokasi"
+      description="Alamat lengkap dan koordinat geografis untuk perhitungan waktu sholat otomatis."
+    >
+      <UFormField label="Alamat" name="addressLine" class="mb-3.5">
+        <UInput v-model="state.addressLine" :ui="ui" size="lg" />
+      </UFormField>
 
-        <AdminFormBannerUpload
-          icon="lucide:image"
-          title="Unggah Banner"
-          description="PNG, JPG • 1920×640 • maks 2 MB"
-        >
-          Unggah Banner
-        </AdminFormBannerUpload>
-      </AdminFormSection>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-3.5">
+        <UFormField label="Kota / Kabupaten" name="city">
+          <UInput v-model="state.city" :ui="ui" size="lg" />
+        </UFormField>
+        <UFormField label="Provinsi" name="province">
+          <UInput v-model="state.province" :ui="ui" size="lg" />
+        </UFormField>
+        <UFormField label="Kode Pos" name="postalCode">
+          <UInput v-model="state.postalCode" :ui="ui" size="lg" />
+        </UFormField>
+      </div>
 
-      <AdminFormSection
-        title="Status Publikasi"
-        description="Atur visibilitas profil masjid di kanal publik."
-      >
-        <AdminSettingsToggleRow v-model="pubProfile" title="Profil publik aktif" description="Tampilkan di halaman /masjid" />
-        <AdminSettingsToggleRow v-model="showTv"      title="Tampilkan di TV Display" description="Header pada layar utama" />
-        <AdminSettingsToggleRow v-model="newRegs"     title="Pendaftaran jamaah baru" description="Buka formulir keanggotaan" />
-        <AdminSettingsToggleRow v-model="maintenance" title="Mode pemeliharaan" description="Sembunyikan halaman publik" />
-      </AdminFormSection>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-2">
+        <UFormField label="Lintang (latitude)" name="latitude">
+          <UInputNumber
+            v-model="state.latitude"
+            :min="-90"
+            :max="90"
+            :step="0.0001"
+            :format-options="coordFormat"
+            :ui="ui"
+            size="lg"
+          />
+        </UFormField>
+        <UFormField label="Bujur (longitude)" name="longitude">
+          <UInputNumber
+            v-model="state.longitude"
+            :min="-180"
+            :max="180"
+            :step="0.0001"
+            :format-options="coordFormat"
+            :ui="ui"
+            size="lg"
+          />
+        </UFormField>
+        <UFormField label="Zona Waktu" name="timezone">
+          <USelect
+            v-model="state.timezone"
+            :items="timezoneItems"
+            :ui="{ base: 'w-full' }"
+            class="w-full"
+            size="lg"
+          />
+        </UFormField>
+      </div>
 
-      <AdminFormSection title="Pratinjau Identitas">
-        <AdminSettingsMosquePreview
-          :name="nama"
-          :arabic="arab"
-          :city="kota"
-          :province="provinsi"
-        />
-      </AdminFormSection>
-    </aside>
+      <AdminSettingsMapStub
+        :title="mapTitle"
+        :latitude="state.latitude"
+        :longitude="state.longitude"
+        :timezone="state.timezone"
+      />
+    </AdminFormSection>
   </div>
 </template>

@@ -1,26 +1,30 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
 import {
   useCashAccounts,
   useCashbookSummary,
   useTransactions,
 } from '~/composables/useCashbook'
-import { formatRupiah, todayIso, firstOfMonthIso } from '~/utils/format'
 
 definePageMeta({ layout: 'admin' })
 useHead({ title: 'Buku Kas — OpenMasjid CMS' })
 
-const today = new Date()
-const period = ref({ from: firstOfMonthIso(today), to: todayIso() })
-const summaryQuery = computed(() => ({ from: period.value.from, to: period.value.to }))
-
-const { data: summary, pending: summaryLoading } = useCashbookSummary(summaryQuery)
-const { data: accountsData } = useCashAccounts()
-
+const { isAdmin } = useAuth()
+const summaryQuery = ref({ from: firstOfMonthIso(new Date()), to: todayIso() })
 const recentFilters = ref({ pageSize: 10, page: 1 })
-const { data: recentData, pending: recentLoading } = useTransactions(recentFilters)
+
+const [{ data: summary }, { data: accountsData }, { data: recentData, pending: recentLoading }] = await Promise.all([
+  useCashbookSummary(summaryQuery),
+  useCashAccounts(),
+  useTransactions(recentFilters),
+])
 
 const router = useRouter()
+
+const quickActions = [
+  { to: '/admin/cashbook/transactions/new?type=income', icon: 'i-lucide-arrow-down-circle', label: 'Catat Pemasukan' },
+  { to: '/admin/cashbook/transactions/new?type=expense', icon: 'i-lucide-arrow-up-circle', label: 'Catat Pengeluaran' },
+  { to: '/admin/cashbook/transactions/new?type=transfer', icon: 'i-lucide-repeat', label: 'Transfer antar Akun' },
+]
 </script>
 
 <template>
@@ -31,12 +35,14 @@ const router = useRouter()
       description="Pencatatan pemasukan, pengeluaran, dan saldo kas masjid. Data dapat dishare ke jamaah lewat halaman transparansi."
     >
       <template #actions>
-        <AdminBtn :to="`/admin/cashbook/reports`" variant="ghost">
-          <Icon name="lucide:bar-chart-3" size="16" /> Laporan
-        </AdminBtn>
-        <AdminBtn to="/admin/cashbook/transactions/new" variant="primary">
-          <Icon name="lucide:plus" size="16" /> Transaksi Baru
-        </AdminBtn>
+        <UButton to="/admin/cashbook/reports" color="neutral" variant="ghost" icon="i-lucide-bar-chart-3" label="Laporan" />
+        <UButton
+          v-if="isAdmin"
+          to="/admin/cashbook/transactions/new"
+          icon="i-lucide-plus"
+          label="Transaksi Baru"
+          class="font-semibold"
+        />
       </template>
     </AdminPageHeader>
 
@@ -50,12 +56,14 @@ const router = useRouter()
       <AdminStatCard
         label="Pemasukan (bulan ini)"
         :num="formatRupiah(summary?.totals?.income ?? '0')"
+        :delta="`${summary?.totals?.incomeCount ?? 0} transaksi`"
         tone="gold"
         icon="lucide:arrow-down-circle"
       />
       <AdminStatCard
         label="Pengeluaran (bulan ini)"
         :num="formatRupiah(summary?.totals?.expense ?? '0')"
+        :delta="`${summary?.totals?.expenseCount ?? 0} transaksi`"
         tone="rose"
         icon="lucide:arrow-up-circle"
       />
@@ -93,23 +101,36 @@ const router = useRouter()
           :accounts="accountsData ?? []"
         />
         <div class="mt-4">
-          <AdminPanel title="Aksi Cepat">
+          <AdminPanel :title="isAdmin ? 'Aksi Cepat' : 'Navigasi'">
             <div class="flex flex-col gap-2">
-              <AdminBtn to="/admin/cashbook/transactions/new?type=income">
-                <Icon name="lucide:arrow-down-circle" size="16" /> Catat Pemasukan
-              </AdminBtn>
-              <AdminBtn to="/admin/cashbook/transactions/new?type=expense">
-                <Icon name="lucide:arrow-up-circle" size="16" /> Catat Pengeluaran
-              </AdminBtn>
-              <AdminBtn to="/admin/cashbook/transactions/new?type=transfer">
-                <Icon name="lucide:repeat" size="16" /> Transfer antar Akun
-              </AdminBtn>
-              <AdminBtn to="/admin/cashbook/accounts" variant="ghost">
-                <Icon name="lucide:landmark" size="16" /> Kelola Akun
-              </AdminBtn>
-              <AdminBtn to="/admin/cashbook/categories" variant="ghost">
-                <Icon name="lucide:tags" size="16" /> Kelola Kategori
-              </AdminBtn>
+              <template v-if="isAdmin">
+                <UButton
+                  v-for="q in quickActions"
+                  :key="q.to"
+                  :to="q.to"
+                  :icon="q.icon"
+                  :label="q.label"
+                  color="neutral"
+                  variant="outline"
+                  class="font-semibold"
+                />
+              </template>
+              <UButton
+                to="/admin/cashbook/accounts"
+                color="neutral"
+                variant="ghost"
+                icon="i-lucide-landmark"
+                label="Kelola Akun"
+                class="font-semibold"
+              />
+              <UButton
+                to="/admin/cashbook/categories"
+                color="neutral"
+                variant="ghost"
+                icon="i-lucide-tags"
+                label="Kelola Kategori"
+                class="font-semibold"
+              />
             </div>
           </AdminPanel>
         </div>

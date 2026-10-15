@@ -1,64 +1,106 @@
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { computed, onBeforeUnmount, onMounted, toValue, type MaybeRefOrGetter } from 'vue'
+import { hijriLabel } from '#shared/utils/prayer'
 
 const dayNames = ['Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
 const monthNames = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
 ]
-const hijriMonths = [
-  'Muḥarram', 'Ṣafar', 'Rabīʿ I', 'Rabīʿ II', 'Jumādā I', 'Jumādā II',
-  'Rajab', 'Shaʿbān', 'Ramadan', 'Shawwāl', 'Dhū al-Qaʿdah', 'Dhū al-Ḥijjah',
-]
+const weekdayIndex: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
 
-const pad = (n: number) => String(n).padStart(2, '0')
-
-function approxHijri(date: Date) {
-  const jd = Math.floor((date.getTime() / 86400000) + 2440587.5)
-  const l = jd - 1948440 + 10632
-  const n = Math.floor((l - 1) / 10631)
-  const l2 = l - 10631 * n + 354
-  const j = (Math.floor((10985 - l2) / 5316)) * (Math.floor((50 * l2) / 17719))
-    + (Math.floor(l2 / 5670)) * (Math.floor((43 * l2) / 15238))
-  const l3 = l2 - (Math.floor((30 - j) / 15)) * (Math.floor((17719 * j) / 50))
-    - (Math.floor(j / 16)) * (Math.floor((15238 * j) / 43)) + 29
-  const month = Math.floor((24 * l3) / 709)
-  const day = l3 - Math.floor((709 * month) / 24)
-  const year = 30 * n + j - 30
-  return { day, month, year }
+/** Indonesian zone abbreviations; anything else falls back to Intl's short name. */
+const TZ_ABBR: Record<string, string> = {
+  'Asia/Jakarta': 'WIB',
+  'Asia/Pontianak': 'WIB',
+  'Asia/Makassar': 'WITA',
+  'Asia/Jayapura': 'WIT',
 }
 
-export function useDisplayClock() {
-  const now = ref(new Date())
-  let timer: ReturnType<typeof setInterval> | null = null
+export const DEFAULT_TIMEZONE = 'Asia/Jakarta'
 
+function safeZone(tz: string | null | undefined): string {
+  if (!tz) return DEFAULT_TIMEZONE
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: tz })
+    return tz
+  }
+  catch {
+    return DEFAULT_TIMEZONE
+  }
+}
+
+/** Wall-clock parts of `date` in `timeZone`. */
+export function zonedParts(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date)
+  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find(p => p.type === type)?.value ?? ''
+  return {
+    year: Number(get('year')),
+    month: Number(get('month')),
+    day: Number(get('day')),
+    weekday: weekdayIndex[get('weekday')] ?? 0,
+    hh: get('hour').padStart(2, '0'),
+    mm: get('minute').padStart(2, '0'),
+    ss: get('second').padStart(2, '0'),
+  }
+}
+
+/**
+ * Ticking clock rendered in the mosque timezone (not the viewer's).
+ * The initial instant is shared SSR → client through `useState` so the
+ * hydrated markup matches; it starts ticking once mounted.
+ */
+export function useDisplayClock(timezone: MaybeRefOrGetter<string | null | undefined> = DEFAULT_TIMEZONE) {
+  const nowMs = useState('display-clock-now', () => Date.now())
+  const now = computed(() => new Date(nowMs.value))
+  const tz = computed(() => safeZone(toValue(timezone)))
+
+  let timer: ReturnType<typeof setInterval> | null = null
   onMounted(() => {
-    now.value = new Date()
+    nowMs.value = Date.now()
     timer = setInterval(() => {
-      now.value = new Date()
+      nowMs.value = Date.now()
     }, 1000)
   })
-
   onBeforeUnmount(() => {
     if (timer) clearInterval(timer)
   })
 
-  const hh = computed(() => pad(now.value.getHours()))
-  const mm = computed(() => pad(now.value.getMinutes()))
-  const ss = computed(() => pad(now.value.getSeconds()))
+  const parts = computed(() => zonedParts(now.value, tz.value))
 
-  const timeFull = computed(() => `${hh.value}:${mm.value}:${ss.value}`)
-  const timeHHMM = computed(() => `${hh.value}:${mm.value}`)
-  const timeSec = computed(() => `:${ss.value}`)
+  const timeFull = computed(() => `${parts.value.hh}:${parts.value.mm}:${parts.value.ss}`)
+  const timeHHMM = computed(() => `${parts.value.hh}:${parts.value.mm}`)
+  const timeSec = computed(() => `:${parts.value.ss}`)
+
+  /** Mosque-local calendar date, `YYYY-MM-DD`. */
+  const localDate = computed(() => {
+    const p = parts.value
+    return `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`
+  })
 
   const gregorianDate = computed(() => {
-    const d = now.value
-    return `${dayNames[d.getDay()]}, ${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`
+    const p = parts.value
+    return `${dayNames[p.weekday]}, ${p.day} ${monthNames[p.month - 1]} ${p.year}`
   })
 
-  const hijriDate = computed(() => {
-    const h = approxHijri(now.value)
-    return `${h.day} ${hijriMonths[h.month - 1]} ${h.year} H`
+  const hijriDate = computed(() => hijriLabel(now.value, tz.value))
+
+  const zoneLabel = computed(() => {
+    if (TZ_ABBR[tz.value]) return TZ_ABBR[tz.value]!
+    const name = new Intl.DateTimeFormat('id-ID', { timeZone: tz.value, timeZoneName: 'short' })
+      .formatToParts(now.value)
+      .find(p => p.type === 'timeZoneName')?.value
+    return name ?? tz.value
   })
 
-  return { now, timeFull, timeHHMM, timeSec, gregorianDate, hijriDate }
+  return { now, timezone: tz, localDate, timeFull, timeHHMM, timeSec, gregorianDate, hijriDate, zoneLabel }
 }

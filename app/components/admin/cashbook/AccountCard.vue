@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import type { CashAccount } from '~/composables/useCashbook'
-import { accountTypeIcon, accountTypeLabel, formatRupiah } from '~/utils/format'
 
-defineProps<{ account: CashAccount }>()
-defineEmits<{ edit: [id: string]; archive: [id: string] }>()
+defineProps<{ account: CashAccount; canEdit?: boolean }>()
+defineEmits<{ edit: [id: string]; archive: [id: string]; restore: [id: string] }>()
 </script>
 
 <template>
-  <div class="bg-cms-surface border border-cms-border rounded-cms-lg p-5 flex flex-col">
+  <div
+    :class="[
+      'bg-cms-surface border border-cms-border rounded-cms-lg p-5 flex flex-col',
+      !account.isActive && 'opacity-75',
+    ]"
+  >
     <div class="flex items-start gap-3">
       <div class="w-12 h-12 rounded-[12px] bg-cms-green-100 text-cms-green-700 grid place-items-center shrink-0">
         <Icon :name="accountTypeIcon(account.type)" size="22" />
@@ -18,13 +22,11 @@ defineEmits<{ edit: [id: string]; archive: [id: string] }>()
         <div v-if="account.accountNumber" class="text-[12.5px] text-cms-ink-2 mt-0.5 font-mono">
           {{ account.accountNumber }}
         </div>
+        <div v-if="account.holderName" class="text-[12px] text-cms-muted truncate">
+          a.n. {{ account.holderName }}
+        </div>
       </div>
-      <span
-        v-if="!account.isActive"
-        class="text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-cms-surface-2 text-cms-muted border border-cms-border"
-      >
-        Arsip
-      </span>
+      <UBadge v-if="!account.isActive" color="neutral" variant="outline" size="sm" label="Arsip" />
     </div>
 
     <div class="mt-4">
@@ -35,13 +37,33 @@ defineEmits<{ edit: [id: string]; archive: [id: string] }>()
       </div>
     </div>
 
-    <div class="flex justify-end gap-1 mt-4 pt-3 border-t border-cms-border">
-      <AdminBtn size="sm" variant="ghost" @click="$emit('edit', account.id)">
-        <Icon name="lucide:edit-2" size="14" /> Edit
-      </AdminBtn>
-      <AdminBtn size="sm" variant="ghost" @click="$emit('archive', account.id)">
-        <Icon name="lucide:archive" size="14" /> Arsip
-      </AdminBtn>
+    <div v-if="canEdit" class="flex justify-end gap-1 mt-4 pt-3 border-t border-cms-border">
+      <UButton
+        size="sm"
+        color="neutral"
+        variant="ghost"
+        icon="i-lucide-pencil"
+        label="Edit"
+        @click="$emit('edit', account.id)"
+      />
+      <UButton
+        v-if="account.isActive"
+        size="sm"
+        color="neutral"
+        variant="ghost"
+        icon="i-lucide-archive"
+        label="Arsip"
+        @click="$emit('archive', account.id)"
+      />
+      <UButton
+        v-else
+        size="sm"
+        color="primary"
+        variant="ghost"
+        icon="i-lucide-archive-restore"
+        label="Aktifkan"
+        @click="$emit('restore', account.id)"
+      />
     </div>
   </div>
 </template>

@@ -1,39 +1,39 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import {
+  apiErrorMessage,
   useCashAccounts,
   useCashbookApi,
   useTransactionCategories,
   type TxType,
 } from '~/composables/useCashbook'
+import type { TransactionFormOutput } from '~/components/admin/cashbook/TransactionForm.vue'
 
 definePageMeta({ layout: 'admin' })
 useHead({ title: 'Transaksi Baru — Buku Kas' })
 
 const route = useRoute()
 const router = useRouter()
+const toast = useToast()
+const { isAdmin } = useAuth()
 
-const { data: accounts } = useCashAccounts()
-const { data: categories } = useTransactionCategories()
+const { data: accounts } = await useCashAccounts()
+const { data: categories } = await useTransactionCategories()
 const api = useCashbookApi()
 
 const submitting = ref(false)
-const error = ref<string | null>(null)
 
-const initialType = (route.query.type as TxType) || 'income'
+const queryType = route.query.type
+const initialType: TxType =
+  queryType === 'expense' || queryType === 'transfer' ? queryType : 'income'
 
-async function onSubmit(payload: Record<string, unknown>) {
+async function onSubmit(payload: TransactionFormOutput) {
   submitting.value = true
-  error.value = null
   try {
-    await api.createTransaction(payload)
-    await router.push('/admin/cashbook/transactions')
-  } catch (e: unknown) {
-    const fetchErr = e as { data?: { statusMessage?: string; data?: { errors?: string[] } } }
-    error.value =
-      fetchErr?.data?.data?.errors?.join(', ') ??
-      fetchErr?.data?.statusMessage ??
-      'Gagal menyimpan transaksi'
+    const row = await api.createTransaction(payload)
+    toast.add({ color: 'success', title: 'Transaksi tersimpan', icon: 'i-lucide-check-circle' })
+    await router.push(`/admin/cashbook/transactions/${row.id}`)
+  } catch (e) {
+    toast.add({ color: 'error', title: 'Gagal menyimpan transaksi', description: apiErrorMessage(e, 'Terjadi kesalahan') })
   } finally {
     submitting.value = false
   }
@@ -46,28 +46,31 @@ async function onSubmit(payload: Record<string, unknown>) {
       eyebrow="Buku Kas"
       title="Transaksi Baru"
       description="Catat pemasukan, pengeluaran, atau transfer antar akun kas."
-    />
+    >
+      <template #actions>
+        <UButton color="neutral" variant="ghost" icon="i-lucide-arrow-left" to="/admin/cashbook/transactions" label="Kembali" />
+      </template>
+    </AdminPageHeader>
 
     <div class="max-w-3xl">
-      <div
-        v-if="error"
-        class="mb-4 flex items-start gap-2 rounded-cms border border-cms-rose-soft bg-cms-rose-soft text-cms-rose px-3 py-2.5 text-[13px]"
-      >
-        <Icon name="lucide:alert-circle" class="mt-0.5 shrink-0" />
-        <span>{{ error }}</span>
-      </div>
-
-      <AdminPanel>
-        <AdminCashbookTransactionForm
-          :accounts="accounts ?? []"
-          :categories="categories ?? []"
-          :initial="{ type: initialType }"
-          :submitting="submitting"
-          submit-label="Simpan Transaksi"
-          @submit="onSubmit"
-          @cancel="router.push('/admin/cashbook/transactions')"
-        />
-      </AdminPanel>
+      <UAlert
+        v-if="!isAdmin"
+        color="warning"
+        variant="subtle"
+        icon="i-lucide-lock"
+        title="Akses baca saja"
+        description="Akun Anda hanya dapat melihat buku kas. Hubungi admin untuk mencatat transaksi."
+      />
+      <AdminCashbookTransactionForm
+        v-else
+        :accounts="accounts ?? []"
+        :categories="categories ?? []"
+        :initial="{ type: initialType }"
+        :submitting="submitting"
+        submit-label="Simpan Transaksi"
+        @submit="onSubmit"
+        @cancel="router.push('/admin/cashbook/transactions')"
+      />
     </div>
   </div>
 </template>

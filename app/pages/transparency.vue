@@ -3,7 +3,16 @@ import { computed, ref } from 'vue'
 import { usePublicCashbookSummary } from '~/composables/useCashbook'
 import { formatDate } from '~/utils/format'
 
-useHead({ title: 'Transparansi Keuangan — OpenMasjid' })
+const { data: mosque } = useFetch('/api/public/mosque', { key: 'public-mosque' })
+const masjidName = computed(() => mosque.value?.name ?? 'Masjid')
+
+useHead({ title: () => `Transparansi Keuangan — ${mosque.value?.name ?? 'OpenMasjid'}` })
+
+const periodItems = [
+  { value: 'month' as const, label: 'Bulan Ini' },
+  { value: 'year' as const, label: 'Tahun Ini' },
+]
+const toast = useToast()
 
 const period = ref<'month' | 'year'>('month')
 const params = computed(() => ({ period: period.value }))
@@ -14,7 +23,13 @@ if (import.meta.client) shareUrl.value = window.location.href
 
 async function copyLink() {
   if (!shareUrl.value) return
-  await navigator.clipboard.writeText(shareUrl.value)
+  try {
+    await navigator.clipboard.writeText(shareUrl.value)
+    toast.add({ color: 'success', title: 'Tautan disalin' })
+  }
+  catch {
+    toast.add({ color: 'error', title: 'Gagal menyalin tautan' })
+  }
 }
 </script>
 
@@ -27,37 +42,30 @@ async function copyLink() {
             Transparansi Keuangan
           </div>
           <h1 class="font-serif text-[24px] sm:text-[28px] font-semibold text-stone-800 mt-0.5 m-0">
-            Buku Kas Masjid
+            Buku Kas {{ masjidName }}
           </h1>
+          <NuxtLink to="/" class="text-[12.5px] text-stone-500 hover:text-emerald-700">
+            ← Kembali ke halaman masjid
+          </NuxtLink>
         </div>
-        <button
-          type="button"
-          class="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg border border-stone-200 bg-white text-sm font-semibold text-stone-700 hover:bg-stone-50"
+        <UButton
+          color="neutral"
+          variant="outline"
+          icon="i-lucide-link"
           @click="copyLink"
         >
-          <Icon name="lucide:link" size="14" /> Salin Tautan
-        </button>
+          Salin Tautan
+        </UButton>
       </div>
     </header>
 
     <main class="max-w-5xl mx-auto px-5 sm:px-8 py-8">
-      <div class="inline-flex gap-1 p-1 bg-white border border-stone-200 rounded-lg mb-6">
-        <button
-          v-for="p in [
-            { v: 'month' as const, label: 'Bulan Ini' },
-            { v: 'year' as const, label: 'Tahun Ini' },
-          ]"
-          :key="p.v"
-          type="button"
-          :class="[
-            'h-9 px-4 rounded-md text-sm font-semibold',
-            period === p.v ? 'bg-emerald-600 text-white' : 'text-stone-600 hover:text-stone-800',
-          ]"
-          @click="period = p.v"
-        >
-          {{ p.label }}
-        </button>
-      </div>
+      <UTabs
+        v-model="period"
+        :items="periodItems"
+        :content="false"
+        class="w-fit mb-6"
+      />
 
       <div v-if="pending" class="text-stone-400 text-center py-12">Memuat data…</div>
 
