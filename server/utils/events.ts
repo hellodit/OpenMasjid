@@ -2,13 +2,13 @@ import { and, count, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { createError } from 'h3'
 import slugify from 'slugify'
 import type { z } from 'zod'
-import { db } from './db'
+import type { DbOrTx } from './db'
 import { eventAgendaItems, events, eventSpeakers, registrants } from '../db/schema'
 import { deriveEventStatus } from '../../shared/utils/events'
 import type { eventCreateSchema } from '../../shared/schemas/events'
 
 /** Active (not cancelled / deleted) and attended registrant counts per event. */
-export async function registrantCounts(eventIds: string[]) {
+export async function registrantCounts(db: DbOrTx, eventIds: string[]) {
   const map = new Map<string, { registered: number, attended: number }>()
   if (!eventIds.length) return map
   const rows = await db
@@ -33,8 +33,8 @@ export async function registrantCounts(eventIds: string[]) {
 /** Attach `registeredCount`, `attendedCount` and derived `displayStatus`. */
 export async function withEventStats<
   T extends { id: string, status: string, startDate: string, endDate: string | null, capacity: number | null },
->(rows: T[], today: string) {
-  const counts = await registrantCounts(rows.map((r) => r.id))
+>(db: DbOrTx, rows: T[], today: string) {
+  const counts = await registrantCounts(db, rows.map((r) => r.id))
   return rows.map((r) => {
     const c = counts.get(r.id) ?? { registered: 0, attended: 0 }
     return {
@@ -48,7 +48,7 @@ export async function withEventStats<
 
 
 /** Unique slug among non-deleted events (appends -2, -3, … on collision). */
-export async function uniqueEventSlug(base: string, excludeId?: string): Promise<string> {
+export async function uniqueEventSlug(db: DbOrTx, base: string, excludeId?: string): Promise<string> {
   const root = base || 'kegiatan'
   for (let i = 1; i < 100; i++) {
     const slug = i === 1 ? root : `${root}-${i}`
@@ -65,9 +65,10 @@ export async function uniqueEventSlug(base: string, excludeId?: string): Promise
 type EventPayload = z.output<typeof eventCreateSchema>
 
 /** Insert or replace an event with its speakers & agenda atomically. */
-export async function saveEvent(data: EventPayload, userId: string, existingId?: string) {
+export async function saveEvent(db: DbOrTx, data: EventPayload, userId: string, existingId?: string) {
   const { speakers, agenda, slug: requestedSlug, ...fields } = data
   const slug = await uniqueEventSlug(
+    db,
     requestedSlug ?? slugify(fields.title, { lower: true, strict: true }),
     existingId,
   )
@@ -114,7 +115,7 @@ export async function saveEvent(data: EventPayload, userId: string, existingId?:
   })
 }
 
-export async function assertEventCategory(categoryId: string) {
+export async function assertEventCategory(db: DbOrTx, categoryId: string) {
   const cat = await db.query.categories.findFirst({
     where: (c, { and, eq, isNull }) => and(eq(c.id, categoryId), isNull(c.deletedAt)),
     columns: { id: true, isActive: true },

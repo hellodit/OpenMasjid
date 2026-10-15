@@ -3,8 +3,9 @@ import type { DropdownMenuItem } from '@nuxt/ui'
 import type { InternalApi } from 'nitropack/types'
 import { formatDate, initials, timeAgo } from '~/utils/format'
 import { REGISTRANT_STATUS_LABELS, type RegistrantStatus } from '#shared/utils/events'
+const tp = useTenantPath()
 
-export type RegistrantRow = InternalApi['/api/admin/registrants']['get']['data'][number]
+export type RegistrantRow = InternalApi['/api/t/:tenant/admin/registrants']['get']['data'][number]
 export type RegistrantAction = 'check-in' | 'undo-check-in' | 'cancel' | 'restore'
 
 defineProps<{
@@ -78,7 +79,7 @@ const td = (i: number, len: number) => ['px-4 py-3.5 text-[13.5px] align-middle'
             <span v-else class="text-cms-muted">—</span>
           </td>
           <td :class="td(i, rows.length)">
-            <NuxtLink :to="`/admin/events/${r.event.id}`" class="font-semibold hover:text-cms-green-700">
+            <NuxtLink :to="tp(`/admin/events/${r.event.id}`)" class="font-semibold hover:text-cms-green-700">
               {{ r.event.title }}
             </NuxtLink>
             <div class="text-[12px] text-cms-muted">

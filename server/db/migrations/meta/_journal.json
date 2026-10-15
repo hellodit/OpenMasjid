@@ -5,22 +5,22 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1778978229585,
-      "tag": "0000_awesome_quicksilver",
+      "when": 1792028696129,
+      "tag": "0000_init",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1779056303505,
-      "tag": "0001_salty_marvex",
+      "when": 1792028697002,
+      "tag": "0001_force_rls",
       "breakpoints": true
     },
     {
       "idx": 2,
       "version": "7",
-      "when": 1792024867083,
-      "tag": "0002_better_auth_relations",
+      "when": 1792029677460,
+      "tag": "0002_tenant_city",
       "breakpoints": true
     }
   ]

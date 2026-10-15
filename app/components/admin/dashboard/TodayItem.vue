@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { dateParts, formatTime, formatTimeRange } from '~/utils/format'
 import type { EventDisplayStatus } from '#shared/utils/events'
+const tp = useTenantPath()
 
 const props = defineProps<{
   ev: {
@@ -31,7 +32,7 @@ const tile = computed(() => {
 
 <template>
   <NuxtLink
-    :to="`/admin/events/${ev.id}`"
+    :to="tp(`/admin/events/${ev.id}`)"
     class="grid grid-cols-[64px_1fr_auto] items-center gap-3.5 px-3.5 py-3 border border-cms-border rounded-cms bg-cms-surface-2 transition-colors hover:bg-cms-green-50 hover:border-cms-green-300"
   >
     <div class="text-center py-2 bg-white border border-cms-border rounded-lg leading-none">

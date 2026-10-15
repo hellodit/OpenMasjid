@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm'
 import {
   check,
+  foreignKey,
   index,
   pgTable,
   timestamp,
@@ -12,16 +13,14 @@ import { users } from './users'
 import { registrantSource } from './_enums'
 import { timestamps } from './_columns'
 
+import { tenantIdColumn, tenantIsolationPolicy } from './tenants'
 export const registrants = pgTable(
   'registrants',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    eventId: uuid('event_id')
-      .notNull()
-      .references(() => events.id, { onDelete: 'cascade' }),
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'restrict' }),
+    tenantId: tenantIdColumn(),
+    eventId: uuid('event_id').notNull(),
+    userId: uuid('user_id').notNull(),
     registeredAt: timestamp('registered_at', { withTimezone: true })
       .notNull()
       .default(sql`now()`),
@@ -34,6 +33,17 @@ export const registrants = pgTable(
     ...timestamps,
   },
   (t) => [
+    tenantIsolationPolicy('registrants', t.tenantId),
+    foreignKey({
+      name: 'registrants_event_fk',
+      columns: [t.tenantId, t.eventId],
+      foreignColumns: [events.tenantId, events.id],
+    }).onDelete('cascade'),
+    foreignKey({
+      name: 'registrants_user_fk',
+      columns: [t.tenantId, t.userId],
+      foreignColumns: [users.tenantId, users.id],
+    }).onDelete('restrict'),
     uniqueIndex('registrants_event_user_active_unique')
       .on(t.eventId, t.userId)
       .where(sql`${t.deletedAt} IS NULL`),

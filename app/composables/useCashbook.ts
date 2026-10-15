@@ -15,10 +15,10 @@ export type AccountType = 'cash' | 'bank' | 'ewallet'
 export type CategoryType = 'income' | 'expense'
 
 // Response types are inferred from the server handlers (serialized JSON shape).
-export type CashAccount = InternalApi['/api/admin/cashbook/accounts']['get'][number]
-export type TransactionCategory = InternalApi['/api/admin/cashbook/categories']['get'][number]
-export type TransactionListItem = InternalApi['/api/admin/cashbook/transactions']['get']['data'][number]
-export type TransactionDetail = InternalApi['/api/admin/cashbook/transactions/:id']['get']
+export type CashAccount = InternalApi['/api/t/:tenant/admin/cashbook/accounts']['get'][number]
+export type TransactionCategory = InternalApi['/api/t/:tenant/admin/cashbook/categories']['get'][number]
+export type TransactionListItem = InternalApi['/api/t/:tenant/admin/cashbook/transactions']['get']['data'][number]
+export type TransactionDetail = InternalApi['/api/t/:tenant/admin/cashbook/transactions/:id']['get']
 
 export type CategoryNode = TransactionCategory & { children: CategoryNode[] }
 
@@ -34,7 +34,8 @@ export interface TransactionFilters {
 }
 
 export function useCashAccounts(opts: { includeArchived?: boolean } = {}) {
-  return useFetch('/api/admin/cashbook/accounts', {
+  const api = useApiBase()
+  return useFetch(`${api}/admin/cashbook/accounts`, {
     query: { includeArchived: opts.includeArchived ? '1' : '0' },
   })
 }
@@ -43,7 +44,8 @@ export function useTransactionCategories(opts: {
   includeArchived?: boolean
   type?: CategoryType
 } = {}) {
-  return useFetch('/api/admin/cashbook/categories', {
+  const api = useApiBase()
+  return useFetch(`${api}/admin/cashbook/categories`, {
     query: {
       includeArchived: opts.includeArchived ? '1' : '0',
       ...(opts.type ? { type: opts.type } : {}),
@@ -70,21 +72,24 @@ export function categoriesAsTree<T extends { id: string; parentId: string | null
 }
 
 export function useTransactions(filters: Ref<TransactionFilters>) {
-  return useFetch('/api/admin/cashbook/transactions', {
+  const api = useApiBase()
+  return useFetch(`${api}/admin/cashbook/transactions`, {
     query: filters,
     watch: [filters],
   })
 }
 
 export function useCashbookSummary(params: Ref<{ period?: 'day' | 'week' | 'month' | 'year'; date?: string; from?: string; to?: string }>) {
-  return useFetch('/api/admin/cashbook/reports/summary', {
+  const api = useApiBase()
+  return useFetch(`${api}/admin/cashbook/reports/summary`, {
     query: params,
     watch: [params],
   })
 }
 
 export function usePublicCashbookSummary(params: Ref<{ period?: 'month' | 'year'; date?: string }>) {
-  return useFetch('/api/public/cashbook/summary', {
+  const api = useApiBase()
+  return useFetch(`${api}/public/cashbook/summary`, {
     query: params,
     watch: [params],
   })
@@ -97,27 +102,28 @@ export function apiErrorMessage(e: unknown, fallback: string): string {
 }
 
 export function useCashbookApi() {
+  const api = useApiBase()
   // Session cookie is sent automatically (same origin).
   return {
     createAccount: (body: z.input<typeof accountCreateSchema>) =>
-      $fetch('/api/admin/cashbook/accounts', { method: 'POST', body }),
+      $fetch(`${api}/admin/cashbook/accounts`, { method: 'POST', body }),
     updateAccount: (id: string, body: z.input<typeof accountUpdateSchema>) =>
-      $fetch(`/api/admin/cashbook/accounts/${id}`, { method: 'PUT', body }),
+      $fetch(`${api}/admin/cashbook/accounts/${id}`, { method: 'PUT', body }),
     deleteAccount: (id: string) =>
-      $fetch(`/api/admin/cashbook/accounts/${id}`, { method: 'DELETE' }),
+      $fetch(`${api}/admin/cashbook/accounts/${id}`, { method: 'DELETE' }),
 
     createCategory: (body: z.input<typeof categoryCreateSchema>) =>
-      $fetch('/api/admin/cashbook/categories', { method: 'POST', body }),
+      $fetch(`${api}/admin/cashbook/categories`, { method: 'POST', body }),
     updateCategory: (id: string, body: z.input<typeof categoryUpdateSchema>) =>
-      $fetch(`/api/admin/cashbook/categories/${id}`, { method: 'PUT', body }),
+      $fetch(`${api}/admin/cashbook/categories/${id}`, { method: 'PUT', body }),
     deleteCategory: (id: string) =>
-      $fetch<{ archived?: boolean; deleted?: boolean }>(`/api/admin/cashbook/categories/${id}`, { method: 'DELETE' }),
+      $fetch<{ archived?: boolean; deleted?: boolean }>(`${api}/admin/cashbook/categories/${id}`, { method: 'DELETE' }),
 
     createTransaction: (body: z.input<typeof transactionCreateSchema>) =>
-      $fetch('/api/admin/cashbook/transactions', { method: 'POST', body }),
+      $fetch(`${api}/admin/cashbook/transactions`, { method: 'POST', body }),
     updateTransaction: (id: string, body: z.input<typeof transactionUpdateSchema>) =>
-      $fetch(`/api/admin/cashbook/transactions/${id}`, { method: 'PUT', body }),
+      $fetch(`${api}/admin/cashbook/transactions/${id}`, { method: 'PUT', body }),
     deleteTransaction: (id: string) =>
-      $fetch(`/api/admin/cashbook/transactions/${id}`, { method: 'DELETE' }),
+      $fetch(`${api}/admin/cashbook/transactions/${id}`, { method: 'DELETE' }),
   }
 }

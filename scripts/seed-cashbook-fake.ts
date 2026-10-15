@@ -1,23 +1,27 @@
 import 'dotenv/config'
 import { and, eq, isNull, like } from 'drizzle-orm'
-import { drizzle } from 'drizzle-orm/postgres-js'
-import postgres from 'postgres'
-import * as schema from '../server/db/schema'
 import {
   cashAccounts,
+  tenants,
   transactionCategories,
   transactions,
   users,
 } from '../server/db/schema'
+import type { DbOrTx } from '../server/utils/db'
 
-const url = process.env.DATABASE_DIRECT_URL
-if (!url) {
-  console.error('DATABASE_DIRECT_URL is not set — aborting.')
+// Runs as the restricted app role (DATABASE_URL) on purpose: Row Level Security then
+// guarantees every query/delete below stays inside SEED_TENANT_SLUG's mosque.
+const { db: rootDb, withTenant } = await import('../server/utils/db')
+
+// Fake data goes into one mosque: SEED_TENANT_SLUG (default al-hikmah).
+const tenantSlug = process.env.SEED_TENANT_SLUG ?? 'al-hikmah'
+const tenant = await rootDb.query.tenants.findFirst({ where: eq(tenants.slug, tenantSlug) })
+if (!tenant) {
+  console.error(`Tenant /${tenantSlug} not found — run \`bun run db:seed\` first.`)
   process.exit(1)
 }
-
-const client = postgres(url, { max: 1 })
-const db = drizzle(client, { schema, casing: 'snake_case' })
+/** Tenant-scoped transaction handle, set in main(). */
+let db: DbOrTx
 
 const SEED_TAG = '[fake]'
 const PERIOD_DAYS = 30
@@ -53,21 +57,21 @@ const choice = <T,>(...items: Array<[T, number]>): T => {
 const toIsoDate = (d: Date) => d.toISOString().slice(0, 10)
 
 async function ensureAccounts(): Promise<AccountRow[]> {
+  // Transfers need at least two accounts: add any missing default account by name.
   const existing = await db.query.cashAccounts.findMany({
+    where: isNull(cashAccounts.deletedAt),
+    columns: { id: true, name: true, type: true },
+  })
+  const missing = DEFAULT_ACCOUNTS.filter((d) => !existing.some((e) => e.name === d.name))
+  if (missing.length) {
+    await db.insert(cashAccounts).values(missing)
+    console.log(`• Created ${missing.length} default cash account(s).`)
+  }
+  return db.query.cashAccounts.findMany({
     where: isNull(cashAccounts.deletedAt),
     columns: { id: true, name: true, type: true },
     orderBy: cashAccounts.sortOrder,
   })
-  if (existing.length > 0) {
-    console.log(`✓ Found ${existing.length} existing cash account(s) — reusing.`)
-    return existing
-  }
-  console.log('• No cash accounts found — creating defaults.')
-  const inserted = await db
-    .insert(cashAccounts)
-    .values(DEFAULT_ACCOUNTS)
-    .returning({ id: cashAccounts.id, name: cashAccounts.name, type: cashAccounts.type })
-  return inserted
 }
 
 async function loadCategories(): Promise<{ income: CategoryRow[]; expense: CategoryRow[] }> {
@@ -87,14 +91,14 @@ async function loadCategories(): Promise<{ income: CategoryRow[]; expense: Categ
 
 async function pickCreator(): Promise<string> {
   const admin = await db.query.users.findFirst({
-    where: eq(users.role, 'admin'),
+    where: and(eq(users.tenantId, tenant!.id), eq(users.role, 'admin')),
     columns: { id: true },
   })
   if (admin) return admin.id
-  const anyUser = await db.query.users.findFirst({ columns: { id: true } })
+  const anyUser = await db.query.users.findFirst({ where: eq(users.tenantId, tenant!.id), columns: { id: true } })
   if (anyUser) return anyUser.id
 
-  console.log('• Tabel users kosong — bikin dummy admin buat createdBy.')
+  console.log('• No users in this mosque — creating a placeholder user for createdBy.')
   const [bootstrap] = await db
     .insert(users)
     .values({
@@ -241,8 +245,8 @@ function buildTransactions(
   }
 
   // Kajian expenses (~3-4 events)
-  const kajianCount = randInt(3, 4)
-  for (let i = 0; i < kajianCount; i++) {
+  const studyEventCount = randInt(3, 4)
+  for (let i = 0; i < studyEventCount; i++) {
     const day = new Date(start)
     day.setDate(day.getDate() + randInt(0, PERIOD_DAYS - 1))
     const slug = choice<'keg-kajian' | 'keg-bukber'>(['keg-kajian', 4], ['keg-bukber', 1])
@@ -308,7 +312,7 @@ async function main() {
     return
   }
 
-  console.log(`Generating ${PERIOD_DAYS} hari fake cashbook data…`)
+  console.log(`Generating ${PERIOD_DAYS} days of fake cashbook data…`)
   const accounts = await ensureAccounts()
   const cats = await loadCategories()
   const createdBy = await pickCreator()
@@ -319,24 +323,27 @@ async function main() {
   const income = rows.filter((r) => r.type === 'income').reduce((a, r) => a + Number(r.amount), 0)
   const expense = rows.filter((r) => r.type === 'expense').reduce((a, r) => a + Number(r.amount), 0)
   const transfer = rows.filter((r) => r.type === 'transfer').length
-  console.log(`  • ${rows.length} transaksi total`)
+  console.log(`  • ${rows.length} transactions total`)
   console.log(`  • Income  : Rp ${income.toLocaleString('id-ID')}`)
   console.log(`  • Expense : Rp ${expense.toLocaleString('id-ID')}`)
-  console.log(`  • Transfer: ${transfer} kali`)
+  console.log(`  • Transfers: ${transfer}`)
 
   if (dryRun) {
-    console.log('— dry run, tidak insert ke DB.')
+    console.log('— dry run, nothing inserted.')
     return
   }
 
   const inserted = await db.insert(transactions).values(rows).returning({ id: transactions.id })
   console.log(`✓ Inserted ${inserted.length} transactions.`)
-  console.log(`  Tip: cleanup dengan \`tsx scripts/seed-cashbook-fake.ts --clean\``)
+  console.log(`  Tip: clean up with \`bun run db:seed:cashbook --clean\``)
 }
 
-main()
+withTenant(tenant.id, async (tx) => {
+  db = tx
+  await main()
+})
   .catch((err) => {
     console.error(err)
     process.exitCode = 1
   })
-  .finally(() => client.end({ timeout: 5 }))
+  .finally(() => process.exit())

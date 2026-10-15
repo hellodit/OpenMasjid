@@ -7,16 +7,19 @@ import {
   numeric,
   pgTable,
   text,
+  unique,
   uuid,
 } from 'drizzle-orm/pg-core'
 import { cashAccountType } from './_enums'
 import { timestamps } from './_columns'
 import { users } from './users'
 
+import { tenantIdColumn, tenantIsolationPolicy } from './tenants'
 export const cashAccounts = pgTable(
   'cash_accounts',
   {
     id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: tenantIdColumn(),
     name: text('name').notNull(),
     type: cashAccountType('type').notNull(),
     accountNumber: text('account_number'),
@@ -31,6 +34,8 @@ export const cashAccounts = pgTable(
     ...timestamps,
   },
   (t) => [
+    tenantIsolationPolicy('cash_accounts', t.tenantId),
+    unique('cash_accounts_tenant_id_id_unique').on(t.tenantId, t.id),
     index('cash_accounts_active_sort_idx')
       .on(t.isActive, t.sortOrder)
       .where(sql`${t.deletedAt} IS NULL`),

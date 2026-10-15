@@ -35,13 +35,14 @@ function formatCountdown(ms: number): string {
  * Refetches when the mosque-local date rolls over.
  */
 export function usePrayerSchedule(now: Ref<Date>) {
+  const api = useApiBase()
   const requestedDate = ref<string>()
 
   const { data, pending, error, refresh } = useAsyncData('public-prayer-schedule', async () => {
-    const today = await $fetch('/api/public/prayer-times', {
+    const today = await $fetch(`${api}/public/prayer-times`, {
       query: requestedDate.value ? { date: requestedDate.value } : {},
     })
-    const tomorrow = await $fetch('/api/public/prayer-times', {
+    const tomorrow = await $fetch(`${api}/public/prayer-times`, {
       query: { date: addDays(today.date, 1) },
     }).catch(() => null)
     return { today, tomorrow }
@@ -51,14 +52,14 @@ export function usePrayerSchedule(now: Ref<Date>) {
   const date = computed(() => data.value?.today.date ?? null)
   const hijri = computed(() => data.value?.today.hijri ?? null)
 
-  /** Today's full list, including `terbit`. */
+  /** Today's full list, including `sunrise`. */
   const allPrayers = computed<PrayerTime[]>(() => data.value?.today.prayers ?? [])
-  const sunrise = computed(() => allPrayers.value.find(p => p.id === 'terbit') ?? null)
+  const sunrise = computed(() => allPrayers.value.find(p => p.id === 'sunrise') ?? null)
 
-  /** Obligatory prayers of today followed by tomorrow's (no `terbit`). */
+  /** Obligatory prayers of today followed by tomorrow's (no `sunrise`). */
   const timeline = computed(() =>
     [...(data.value?.today.prayers ?? []), ...(data.value?.tomorrow?.prayers ?? [])]
-      .filter(p => p.id !== 'terbit')
+      .filter(p => p.id !== 'sunrise')
       .map(p => ({ ...p, atMs: Date.parse(p.at), iqAtMs: Date.parse(p.iqAt) })),
   )
 
@@ -83,7 +84,7 @@ export function usePrayerSchedule(now: Ref<Date>) {
     // When the next prayer is tomorrow's (after Isya), flag today's card of the same id.
     const nextIsTomorrow = !!n && !allPrayers.value.some(p => p.at === n.at)
     return allPrayers.value
-      .filter(p => p.id !== 'terbit')
+      .filter(p => p.id !== 'sunrise')
       .map((p) => {
         const isNext = !!n && (n.at === p.at || (nextIsTomorrow && n.id === p.id))
         const isCurrent = !!c && c.at === p.at

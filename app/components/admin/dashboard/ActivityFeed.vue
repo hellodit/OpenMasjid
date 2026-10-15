@@ -1,4 +1,5 @@
 <script setup lang="ts">
+const tp = useTenantPath()
 const props = defineProps<{
   items: {
     id: string
@@ -39,7 +40,7 @@ const rows = computed(() => props.items.map(r => ({
           {{ it.attended ? 'hadir di' : 'mendaftar pada' }}
           <NuxtLink
             v-if="it.event"
-            :to="`/admin/events/${it.event.id}`"
+            :to="tp(`/admin/events/${it.event.id}`)"
             class="text-cms-ink font-semibold hover:text-cms-green-700 hover:underline"
           >
             {{ it.event.title }}

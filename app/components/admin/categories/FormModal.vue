@@ -2,6 +2,7 @@
 import type { FormSubmitEvent } from '@nuxt/ui'
 import { bannerClass } from '~/utils/format'
 import { eventCategoryCreateSchema, eventCategoryUpdateSchema } from '#shared/schemas/events'
+const api = useApiBase()
 
 interface CategoryRow {
   id: string
@@ -78,11 +79,11 @@ async function onSubmit(event: FormSubmitEvent<Record<string, unknown>>) {
   saving.value = true
   try {
     if (props.category) {
-      await $fetch(`/api/admin/categories/${props.category.id}`, { method: 'PUT', body: event.data })
+      await $fetch(`${api}/admin/categories/${props.category.id}`, { method: 'PUT', body: event.data })
       toast.add({ color: 'success', title: 'Kategori diperbarui' })
     }
     else {
-      await $fetch('/api/admin/categories', { method: 'POST', body: event.data })
+      await $fetch(`${api}/admin/categories`, { method: 'POST', body: event.data })
       toast.add({ color: 'success', title: 'Kategori dibuat' })
     }
     open.value = false

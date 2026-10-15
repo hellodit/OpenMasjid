@@ -19,9 +19,12 @@
     "db:seed:events": "tsx scripts/seed-events-fake.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "nuxi typecheck"
+    "typecheck": "nuxi typecheck",
+    "test:isolation": "tsx scripts/test-isolation.ts",
+    "db:seed:tenants": "tsx scripts/seed-tenants-fake.ts"
   },
   "dependencies": {
+    "@better-auth/core": "1.7.8",
     "@nuxt/eslint": "1.15.2",
     "@nuxt/image": "2.0.0",
     "@nuxt/ui": "4.11.3",

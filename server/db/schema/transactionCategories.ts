@@ -1,11 +1,12 @@
 import { sql } from 'drizzle-orm'
 import {
-  type AnyPgColumn,
   boolean,
+  foreignKey,
   index,
   integer,
   pgTable,
   text,
+  unique,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
@@ -13,14 +14,13 @@ import { transactionCategoryType } from './_enums'
 import { timestamps } from './_columns'
 import { users } from './users'
 
+import { tenantIdColumn, tenantIsolationPolicy } from './tenants'
 export const transactionCategories = pgTable(
   'transaction_categories',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    parentId: uuid('parent_id').references(
-      (): AnyPgColumn => transactionCategories.id,
-      { onDelete: 'restrict' },
-    ),
+    tenantId: tenantIdColumn(),
+    parentId: uuid('parent_id'),
     slug: text('slug').notNull(),
     name: text('name').notNull(),
     type: transactionCategoryType('type').notNull(),
@@ -34,9 +34,16 @@ export const transactionCategories = pgTable(
     ...timestamps,
   },
   (t) => [
-    uniqueIndex('transaction_categories_slug_unique')
-      .on(t.slug)
+    tenantIsolationPolicy('transaction_categories', t.tenantId),
+    uniqueIndex('transaction_categories_tenant_slug_unique')
+      .on(t.tenantId, t.slug)
       .where(sql`${t.deletedAt} IS NULL`),
+    unique('transaction_categories_tenant_id_id_unique').on(t.tenantId, t.id),
+    foreignKey({
+      name: 'transaction_categories_parent_fk',
+      columns: [t.tenantId, t.parentId],
+      foreignColumns: [t.tenantId, t.id],
+    }).onDelete('restrict'),
     index('transaction_categories_parent_idx').on(t.parentId),
     index('transaction_categories_type_active_idx').on(t.type, t.isActive),
   ],

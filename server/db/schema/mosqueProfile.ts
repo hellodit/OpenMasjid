@@ -1,30 +1,28 @@
-import { sql } from 'drizzle-orm'
 import {
   boolean,
   char,
-  check,
   integer,
   jsonb,
   numeric,
   pgTable,
   smallint,
   text,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
 import { asrMadhab, prayerCalcMethod } from './_enums'
 import { timestamps } from './_columns'
 import { users } from './users'
 
-export const MOSQUE_PROFILE_SINGLETON_ID = '00000000-0000-0000-0000-000000000001'
-
-export type PrayerKey = 'subuh' | 'terbit' | 'dzuhur' | 'ashar' | 'maghrib' | 'isya'
+import { tenantIdColumn, tenantIsolationPolicy } from './tenants'
+export type PrayerKey = 'fajr' | 'sunrise' | 'dhuhr' | 'asr' | 'maghrib' | 'isha'
 export type PrayerMinutes = Record<PrayerKey, number>
 
 export const mosqueProfile = pgTable(
   'mosque_profile',
   {
-    id: uuid('id').primaryKey().default(sql`'${sql.raw(MOSQUE_PROFILE_SINGLETON_ID)}'::uuid`),
-    slug: text('slug').unique(),
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: tenantIdColumn(),
     name: text('name').notNull(),
     arabicName: text('arabic_name'),
     tagline: text('tagline'),
@@ -58,20 +56,17 @@ export const mosqueProfile = pgTable(
     prayerAdjustments: jsonb('prayer_adjustments')
       .$type<PrayerMinutes>()
       .notNull()
-      .default({ subuh: 0, terbit: 0, dzuhur: 0, ashar: 0, maghrib: 0, isya: 0 }),
+      .default({ fajr: 0, sunrise: 0, dhuhr: 0, asr: 0, maghrib: 0, isha: 0 }),
     /** Minutes between adzan and iqamah. */
     iqamahOffsets: jsonb('iqamah_offsets')
       .$type<PrayerMinutes>()
       .notNull()
-      .default({ subuh: 10, terbit: 0, dzuhur: 10, ashar: 10, maghrib: 5, isya: 10 }),
+      .default({ fajr: 10, sunrise: 0, dhuhr: 10, asr: 10, maghrib: 5, isha: 10 }),
 
     updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
     ...timestamps,
   },
+  // One profile per tenant (mosque).
   (t) => [
-    check(
-      'mosque_profile_singleton',
-      sql`${t.id} = '${sql.raw(MOSQUE_PROFILE_SINGLETON_ID)}'::uuid`,
-    ),
-  ],
+    tenantIsolationPolicy('mosque_profile', t.tenantId),uniqueIndex('mosque_profile_tenant_unique').on(t.tenantId)],
 )

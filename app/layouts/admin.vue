@@ -1,8 +1,10 @@
 <script setup lang="ts">
 const route = useRoute()
+const slug = useTenantSlug()
 
 const crumbs = computed<string[]>(() => {
-  const p = route.path
+  // Path relative to the mosque: /al-hikmah/admin/events → /admin/events
+  const p = route.path.slice(`/${slug.value}`.length) || '/'
   if (p === '/admin') return ['Manajemen', 'Dashboard']
   if (p.startsWith('/admin/events/new')) return ['Manajemen', 'Kegiatan', 'Tambah']
   if (/^\/admin\/events\/[^/]+\/edit$/.test(p)) return ['Manajemen', 'Kegiatan', 'Ubah']
@@ -16,6 +18,7 @@ const crumbs = computed<string[]>(() => {
   if (p.startsWith('/admin/cashbook/reports')) return ['Buku Kas', 'Laporan']
   if (p.startsWith('/admin/cashbook')) return ['Buku Kas', 'Ringkasan']
   if (p.startsWith('/admin/settings')) return ['Sistem', 'Pengaturan']
+  if (p.startsWith('/admin/team')) return ['Sistem', 'Pengurus']
   return ['Manajemen']
 })
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { bannerClass } from '~/utils/format'
+const tp = useTenantPath()
 
 const props = defineProps<{
   category: {
@@ -25,7 +26,7 @@ const emit = defineEmits<{
 
 const menu = computed(() => [[
   { label: 'Ubah', icon: 'i-lucide-pencil', onSelect: () => emit('edit') },
-  { label: 'Lihat kegiatan', icon: 'i-lucide-calendar', to: `/admin/events?categoryId=${props.category.id}` },
+  { label: 'Lihat kegiatan', icon: 'i-lucide-calendar', to: tp(`/admin/events?categoryId=${props.category.id}`) },
 ], [
   {
     label: props.category.eventCount ? 'Arsipkan' : 'Hapus',

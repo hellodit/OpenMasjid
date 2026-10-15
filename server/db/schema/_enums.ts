@@ -1,14 +1,9 @@
 import { pgEnum } from 'drizzle-orm/pg-core'
 
-export const userRole = pgEnum('user_role', ['admin', 'viewer', 'jamaah'])
+export const userRole = pgEnum('user_role', ['admin', 'viewer', 'member'])
 
-export const eventStatus = pgEnum('event_status', [
-  'draft',
-  'published',
-  'ongoing',
-  'full',
-  'archived',
-])
+/** Persisted event status; `ongoing` / `full` are derived (shared/utils/events.ts). */
+export const eventStatus = pgEnum('event_status', ['draft', 'published', 'archived'])
 
 export const registrantSource = pgEnum('registrant_source', [
   'web',
@@ -45,3 +40,5 @@ export const prayerCalcMethod = pgEnum('prayer_calc_method', [
 ])
 
 export const asrMadhab = pgEnum('asr_madhab', ['shafi', 'hanafi'])
+
+export const tenantStatus = pgEnum('tenant_status', ['active', 'suspended'])

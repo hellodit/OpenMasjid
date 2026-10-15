@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm'
 import {
   boolean,
   check,
+  foreignKey,
   date,
   index,
   integer,
@@ -9,6 +10,7 @@ import {
   text,
   time,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
@@ -17,13 +19,13 @@ import { users } from './users'
 import { eventStatus } from './_enums'
 import { timestamps } from './_columns'
 
+import { tenantIdColumn, tenantIsolationPolicy } from './tenants'
 export const events = pgTable(
   'events',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    categoryId: uuid('category_id')
-      .notNull()
-      .references(() => categories.id, { onDelete: 'restrict' }),
+    tenantId: tenantIdColumn(),
+    categoryId: uuid('category_id').notNull(),
     title: text('title').notNull(),
     arabicTitle: text('arabic_title'),
     slug: text('slug').notNull(),
@@ -50,12 +52,18 @@ export const events = pgTable(
     ...timestamps,
   },
   (t) => [
-    uniqueIndex('events_slug_unique')
-      .on(t.slug)
+    tenantIsolationPolicy('events', t.tenantId),
+    uniqueIndex('events_tenant_slug_unique')
+      .on(t.tenantId, t.slug)
       .where(sql`${t.deletedAt} IS NULL`),
-    index('events_status_start_date_idx').on(t.status, t.startDate),
+    unique('events_tenant_id_id_unique').on(t.tenantId, t.id),
+    foreignKey({
+      name: 'events_category_fk',
+      columns: [t.tenantId, t.categoryId],
+      foreignColumns: [categories.tenantId, categories.id],
+    }).onDelete('restrict'),
+    index('events_tenant_status_start_idx').on(t.tenantId, t.status, t.startDate),
     index('events_category_idx').on(t.categoryId),
-    index('events_start_date_idx').on(t.startDate),
     check(
       'events_end_after_start',
       sql`${t.endDate} IS NULL OR ${t.endDate} >= ${t.startDate}`,
@@ -71,14 +79,21 @@ export const eventSpeakers = pgTable(
   'event_speakers',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    eventId: uuid('event_id')
-      .notNull()
-      .references(() => events.id, { onDelete: 'cascade' }),
+    tenantId: tenantIdColumn(),
+    eventId: uuid('event_id').notNull(),
     name: text('name').notNull(),
     role: text('role'),
     sortOrder: integer('sort_order').notNull().default(0),
   },
-  (t) => [index('event_speakers_event_idx').on(t.eventId, t.sortOrder)],
+  (t) => [
+    tenantIsolationPolicy('event_speakers', t.tenantId),
+    index('event_speakers_event_idx').on(t.eventId, t.sortOrder),
+    foreignKey({
+      name: 'event_speakers_event_fk',
+      columns: [t.tenantId, t.eventId],
+      foreignColumns: [events.tenantId, events.id],
+    }).onDelete('cascade'),
+  ],
 )
 
 /** Susunan acara (agenda) of an event. */
@@ -86,14 +101,21 @@ export const eventAgendaItems = pgTable(
   'event_agenda_items',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    eventId: uuid('event_id')
-      .notNull()
-      .references(() => events.id, { onDelete: 'cascade' }),
+    tenantId: tenantIdColumn(),
+    eventId: uuid('event_id').notNull(),
     startTime: time('start_time'),
     endTime: time('end_time'),
     title: text('title').notNull(),
     person: text('person'),
     sortOrder: integer('sort_order').notNull().default(0),
   },
-  (t) => [index('event_agenda_items_event_idx').on(t.eventId, t.sortOrder)],
+  (t) => [
+    tenantIsolationPolicy('event_agenda_items', t.tenantId),
+    index('event_agenda_items_event_idx').on(t.eventId, t.sortOrder),
+    foreignKey({
+      name: 'event_agenda_items_event_fk',
+      columns: [t.tenantId, t.eventId],
+      foreignColumns: [events.tenantId, events.id],
+    }).onDelete('cascade'),
+  ],
 )

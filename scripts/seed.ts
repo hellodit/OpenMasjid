@@ -1,208 +1,68 @@
+/**
+ * Seed one mosque (tenant) with default data and its owner account.
+ *   bun run db:seed
+ * Env: SEED_TENANT_SLUG, SEED_TENANT_NAME, SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, SEED_ADMIN_NAME.
+ * Idempotent: re-running only fills in what is missing.
+ */
 import 'dotenv/config'
-import { and, eq, isNull, sql } from 'drizzle-orm'
-import {
-  categories,
-  mosqueProfile,
-  MOSQUE_PROFILE_SINGLETON_ID,
-  transactionCategories,
-  users,
-} from '../server/db/schema'
+import { and, eq, sql } from 'drizzle-orm'
+import { tenants, users } from '../server/db/schema'
 
-// Seeds use the direct (session) connection; the app modules read DATABASE_URL.
+// Seeds use the direct (owner) connection; the app modules read DATABASE_URL.
 if (process.env.DATABASE_DIRECT_URL) process.env.DATABASE_URL = process.env.DATABASE_DIRECT_URL
 if (!process.env.DATABASE_URL) {
   console.error('DATABASE_DIRECT_URL / DATABASE_URL is not set — aborting seed.')
   process.exit(1)
 }
 
-const { db } = await import('../server/utils/db')
-const { auth } = await import('../server/utils/auth')
+const { db, withTenant } = await import('../server/utils/db')
+const { provisionTenant, seedTenantDefaults, createStaffUser } = await import('../server/utils/tenant-provisioning')
 
-const CATEGORY_SEED = [
-  { slug: 'kajian',   name: 'Kajian',         icon: 'lucide:book-open',   sortOrder: 1 },
-  { slug: 'tahsin',   name: 'Tahsin Quran',   icon: 'lucide:book-marked', sortOrder: 2 },
-  { slug: 'tpa',      name: 'TPA / TPQ',      icon: 'lucide:users',       sortOrder: 3 },
-  { slug: 'zakat',    name: 'Zakat & Sosial', icon: 'lucide:heart',       sortOrder: 4 },
-  { slug: 'muharram', name: 'Hari Besar',     icon: 'lucide:moon',        sortOrder: 5 },
-  { slug: 'umum',     name: 'Lainnya',        icon: 'lucide:tag',         sortOrder: 6 },
-]
+const slug = process.env.SEED_TENANT_SLUG ?? 'al-hikmah'
+const name = process.env.SEED_TENANT_NAME ?? 'Masjid Al-Hikmah'
 
-async function seedCategories() {
-  const result = await db
-    .insert(categories)
-    .values(CATEGORY_SEED)
-    .onConflictDoNothing({ target: categories.slug, where: sql`deleted_at IS NULL` })
-    .returning({ slug: categories.slug })
-  console.log(`✓ categories: inserted ${result.length} new (out of ${CATEGORY_SEED.length})`)
+async function seedTenant() {
+  let tenant = await db.query.tenants.findFirst({ where: eq(tenants.slug, slug) })
+  if (!tenant) {
+    tenant = await provisionTenant({ slug, name, timezone: 'Asia/Jakarta', city: 'Jakarta Pusat', latitude: -6.175392, longitude: 106.827153 })
+    console.log(`✓ tenant: created /${slug}`)
+  }
+  else {
+    await withTenant(tenant.id, (tx) => seedTenantDefaults(tx, tenant!.id))
+    console.log(`✓ tenant: /${slug} exists, defaults ensured`)
+  }
+  return tenant
 }
 
-async function seedMosqueProfile() {
-  const result = await db
-    .insert(mosqueProfile)
-    .values({
-      id: MOSQUE_PROFILE_SINGLETON_ID,
-      slug: 'al-hikmah',
-      name: 'Masjid Al-Hikmah',
-      arabicName: 'مَسْجِد الْحِكْمَة',
-      tagline: 'Mengabdi kepada Allah, melayani jamaah.',
-      yearFounded: 1987,
-      capacity: 600,
-      countryCode: 'ID',
-      timezone: 'Asia/Jakarta',
-      // Monas, Jakarta — change in Pengaturan Masjid.
-      latitude: '-6.175392',
-      longitude: '106.827153',
-    })
-    .onConflictDoNothing({ target: mosqueProfile.id })
-    .returning({ id: mosqueProfile.id })
-  console.log(`✓ mosque_profile: ${result.length ? 'inserted singleton' : 'already exists'}`)
-}
-
-/**
- * Create (or promote) the first admin through Better Auth so the password is
- * hashed and an `accounts` row exists. Configure via SEED_ADMIN_* env vars.
- */
-async function seedAdmin() {
+async function seedOwner(tenant: { id: string, slug: string, ownerUserId: string | null }) {
   const email = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase()
   const password = process.env.SEED_ADMIN_PASSWORD
-  const name = process.env.SEED_ADMIN_NAME ?? 'Admin DKM'
+  const adminName = process.env.SEED_ADMIN_NAME ?? 'Admin DKM'
   if (!email || !password) {
-    console.warn('⚠ SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD not set — skipping admin user.')
+    console.warn('⚠ SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD not set — skipping owner account.')
     return
   }
 
-  let user = await db.query.users.findFirst({ where: eq(sql`lower(${users.email})`, email) })
+  const findUser = () =>
+    db.query.users.findFirst({ where: and(eq(users.tenantId, tenant.id), eq(sql`lower(${users.email})`, email)) })
+
+  let user = await findUser()
   if (!user) {
-    await auth.api.signUpEmail({ body: { email, password, name } })
-    user = await db.query.users.findFirst({ where: eq(sql`lower(${users.email})`, email) })
-    console.log(`✓ users: created ${email}`)
+    await createStaffUser(tenant, { name: adminName, email, password }, 'admin')
+    user = await findUser()
+    console.log(`✓ users: created ${email} in /${tenant.slug}`)
   }
-  if (!user) throw new Error('Admin user was not created')
-
-  if (user.role !== 'admin' || !user.emailVerified) {
-    await db.update(users).set({ role: 'admin', emailVerified: true }).where(eq(users.id, user.id))
-  }
-  console.log(`✓ users: ${email} has role='admin'`)
-}
-
-type CashbookSeed = {
-  slug: string
-  name: string
-  type: 'income' | 'expense'
-  icon?: string
-  colorToken?: string
-  sortOrder: number
-  children?: Array<Omit<CashbookSeed, 'children' | 'type'>>
-}
-
-const CASHBOOK_CATEGORY_SEED: CashbookSeed[] = [
-  // Income
-  { slug: 'infaq-jumat',  name: "Infaq Jum'at",  type: 'income', icon: 'lucide:hand-coins', sortOrder: 1 },
-  { slug: 'kotak-amal',   name: 'Kotak Amal',    type: 'income', icon: 'lucide:box',        sortOrder: 2 },
-  {
-    slug: 'donasi-terikat', name: 'Donasi Terikat', type: 'income', icon: 'lucide:gift', sortOrder: 3,
-    children: [
-      { slug: 'donasi-renovasi',    name: 'Renovasi',     icon: 'lucide:hammer', sortOrder: 1 },
-      { slug: 'donasi-pembangunan', name: 'Pembangunan',  icon: 'lucide:building', sortOrder: 2 },
-    ],
-  },
-  {
-    slug: 'zakat', name: 'Zakat', type: 'income', icon: 'lucide:heart', sortOrder: 4,
-    children: [
-      { slug: 'zakat-maal',    name: 'Maal',    icon: 'lucide:coins',  sortOrder: 1 },
-      { slug: 'zakat-fitrah',  name: 'Fitrah',  icon: 'lucide:wheat',  sortOrder: 2 },
-    ],
-  },
-  { slug: 'hibah',        name: 'Hibah',         type: 'income', icon: 'lucide:gift', sortOrder: 5 },
-  { slug: 'pemasukan-lain', name: 'Lain-lain',   type: 'income', icon: 'lucide:circle-dollar-sign', sortOrder: 99 },
-
-  // Expense
-  {
-    slug: 'operasional', name: 'Operasional', type: 'expense', icon: 'lucide:plug', sortOrder: 1,
-    children: [
-      { slug: 'op-listrik',    name: 'Listrik',    icon: 'lucide:zap',     sortOrder: 1 },
-      { slug: 'op-air',        name: 'Air',        icon: 'lucide:droplet', sortOrder: 2 },
-      { slug: 'op-internet',   name: 'Internet',   icon: 'lucide:wifi',    sortOrder: 3 },
-      { slug: 'op-kebersihan', name: 'Kebersihan', icon: 'lucide:sparkles', sortOrder: 4 },
-    ],
-  },
-  {
-    slug: 'honor', name: 'Honor', type: 'expense', icon: 'lucide:user-check', sortOrder: 2,
-    children: [
-      { slug: 'honor-imam',    name: 'Imam',    icon: 'lucide:user', sortOrder: 1 },
-      { slug: 'honor-marbot',  name: 'Marbot',  icon: 'lucide:user', sortOrder: 2 },
-      { slug: 'honor-muadzin', name: 'Muadzin', icon: 'lucide:user', sortOrder: 3 },
-    ],
-  },
-  {
-    slug: 'kegiatan', name: 'Kegiatan', type: 'expense', icon: 'lucide:calendar', sortOrder: 3,
-    children: [
-      { slug: 'keg-kajian',    name: 'Kajian',     icon: 'lucide:book-open', sortOrder: 1 },
-      { slug: 'keg-bukber',    name: 'Buka Puasa', icon: 'lucide:utensils',  sortOrder: 2 },
-      { slug: 'keg-ramadhan',  name: 'Ramadhan',   icon: 'lucide:moon',      sortOrder: 3 },
-    ],
-  },
-  { slug: 'perawatan',     name: 'Perawatan & Renovasi', type: 'expense', icon: 'lucide:wrench',  sortOrder: 4 },
-  { slug: 'sosial',        name: 'Sosial',               type: 'expense', icon: 'lucide:heart-handshake', sortOrder: 5 },
-  { slug: 'pengeluaran-lain', name: 'Lain-lain',         type: 'expense', icon: 'lucide:more-horizontal', sortOrder: 99 },
-]
-
-async function seedCashbookCategories() {
-  let inserted = 0
-  for (const top of CASHBOOK_CATEGORY_SEED) {
-    const [topRow] = await db
-      .insert(transactionCategories)
-      .values({
-        slug: top.slug,
-        name: top.name,
-        type: top.type,
-        icon: top.icon ?? null,
-        colorToken: top.colorToken ?? null,
-        sortOrder: top.sortOrder,
-      })
-      .onConflictDoNothing({ target: transactionCategories.slug, where: sql`deleted_at IS NULL` })
-      .returning({ id: transactionCategories.id, slug: transactionCategories.slug })
-
-    if (topRow) inserted++
-
-    const parentId =
-      topRow?.id ??
-      (
-        await db.query.transactionCategories.findFirst({
-          where: and(eq(transactionCategories.slug, top.slug), isNull(transactionCategories.deletedAt)),
-          columns: { id: true },
-        })
-      )?.id
-
-    if (!parentId || !top.children?.length) continue
-
-    for (const child of top.children) {
-      const res = await db
-        .insert(transactionCategories)
-        .values({
-          parentId,
-          slug: child.slug,
-          name: child.name,
-          type: top.type,
-          icon: child.icon ?? null,
-          colorToken: child.colorToken ?? null,
-          sortOrder: child.sortOrder,
-        })
-        .onConflictDoNothing({ target: transactionCategories.slug, where: sql`deleted_at IS NULL` })
-        .returning({ id: transactionCategories.id })
-      if (res.length) inserted++
-    }
-  }
-  console.log(`✓ transaction_categories: inserted ${inserted} new rows`)
+  if (!user) throw new Error('Owner user was not created')
+  if (user.role !== 'admin') await db.update(users).set({ role: 'admin', emailVerified: true }).where(eq(users.id, user.id))
+  if (!tenant.ownerUserId) await db.update(tenants).set({ ownerUserId: user.id }).where(eq(tenants.id, tenant.id))
+  console.log(`✓ owner: ${email}`)
 }
 
 async function main() {
   console.log('Seeding OpenMasjid…')
-  await seedCategories()
-  await seedMosqueProfile()
-  await seedCashbookCategories()
-  await seedAdmin()
-  console.log('Done.')
+  const tenant = await seedTenant()
+  await seedOwner(tenant)
+  console.log(`Done. Open http://localhost:3000/${slug}/admin`)
 }
 
 main()
