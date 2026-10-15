@@ -1,81 +1,58 @@
-import { defineEventHandler } from 'h3'
-import { and, desc, eq, gte, isNull, lte, sql } from 'drizzle-orm'
-import { db } from '~~/server/utils/db'
-import { listAccountsWithBalance } from '~~/server/utils/balance'
-import { resolvePeriod } from '~~/server/utils/period'
-import { readZodQuery } from '~~/server/utils/validate'
-import { transactionCategories, transactions } from '~~/server/db/schema'
+import { and, desc, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm'
 import { z } from 'zod'
+import { transactionCategories, transactions } from '~~/server/db/schema'
+import { isoDate } from '#shared/schemas/common'
 
 const querySchema = z.object({
   period: z.enum(['month', 'year']).default('month'),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  date: isoDate.optional(),
 })
 
+/** Public transparency summary — no per-transaction detail is exposed. */
 export default defineEventHandler(async (event) => {
   const params = readZodQuery(event, querySchema)
-  const range = resolvePeriod(params)
+  const range = resolvePeriod(params, await getMosqueTimezone())
+  const inRange = and(
+    isNull(transactions.deletedAt),
+    gte(transactions.transactionDate, range.from),
+    lte(transactions.transactionDate, range.to),
+  )
 
-  const totalsByType = await db
-    .select({
-      type: transactions.type,
-      total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)::text`,
-    })
-    .from(transactions)
-    .where(
-      and(
-        isNull(transactions.deletedAt),
-        gte(transactions.transactionDate, range.from),
-        lte(transactions.transactionDate, range.to),
-      ),
-    )
-    .groupBy(transactions.type)
+  const [totalsByType, accounts, topCategories] = await Promise.all([
+    db
+      .select({
+        type: transactions.type,
+        total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)::text`,
+      })
+      .from(transactions)
+      .where(inRange)
+      .groupBy(transactions.type),
+    listAccountsWithBalance({ includeArchived: true }),
+    db
+      .select({
+        categoryName: transactionCategories.name,
+        colorToken: transactionCategories.colorToken,
+        type: transactions.type,
+        total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)::text`,
+      })
+      .from(transactions)
+      .leftJoin(transactionCategories, eq(transactions.categoryId, transactionCategories.id))
+      .where(and(inRange, inArray(transactions.type, ['income', 'expense'])))
+      .groupBy(transactionCategories.name, transactionCategories.colorToken, transactions.type)
+      .orderBy(desc(sql`SUM(${transactions.amount})`))
+      .limit(10),
+  ])
 
-  let totalIncome = '0'
-  let totalExpense = '0'
-  for (const row of totalsByType) {
-    if (row.type === 'income') totalIncome = row.total
-    else if (row.type === 'expense') totalExpense = row.total
-  }
-
-  const accounts = await listAccountsWithBalance({ includeArchived: false })
-  const totalBalance = accounts.reduce((sum, a) => sum + Number(a.balance), 0).toFixed(2)
-
-  const breakdownRows = await db
-    .select({
-      categoryName: transactionCategories.name,
-      colorToken: transactionCategories.colorToken,
-      type: transactions.type,
-      total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)::text`,
-    })
-    .from(transactions)
-    .leftJoin(
-      transactionCategories,
-      eq(transactions.categoryId, transactionCategories.id),
-    )
-    .where(
-      and(
-        isNull(transactions.deletedAt),
-        gte(transactions.transactionDate, range.from),
-        lte(transactions.transactionDate, range.to),
-        sql`${transactions.type} IN ('income', 'expense')`,
-      ),
-    )
-    .groupBy(
-      transactionCategories.name,
-      transactionCategories.colorToken,
-      transactions.type,
-    )
-    .orderBy(desc(sql`SUM(${transactions.amount})`))
-    .limit(10)
+  const totalIncome = totalsByType.find((r) => r.type === 'income')?.total ?? '0'
+  const totalExpense = totalsByType.find((r) => r.type === 'expense')?.total ?? '0'
 
   return {
     range,
-    totalBalance,
+    totalBalance: sumMoney(accounts.map((a) => a.balance)),
     totalIncome,
     totalExpense,
-    netCashFlow: (Number(totalIncome) - Number(totalExpense)).toFixed(2),
-    topCategories: breakdownRows,
-    accountCount: accounts.length,
+    netCashFlow: subMoney(totalIncome, totalExpense),
+    topCategories,
+    accountCount: accounts.filter((a) => a.isActive).length,
   }
 })

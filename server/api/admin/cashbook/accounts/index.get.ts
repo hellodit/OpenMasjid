@@ -1,10 +1,7 @@
-import { defineEventHandler, getQuery } from 'h3'
-import { requireAdmin } from '~~/server/utils/auth'
-import { listAccountsWithBalance } from '~~/server/utils/balance'
+import { accountListQuery } from '#shared/schemas/cashbook'
 
 export default defineEventHandler(async (event) => {
-  await requireAdmin(event)
-  const query = getQuery(event)
-  const includeArchived = query.includeArchived === 'true' || query.includeArchived === '1'
+  await requireStaff(event)
+  const { includeArchived } = readZodQuery(event, accountListQuery)
   return listAccountsWithBalance({ includeArchived })
 })

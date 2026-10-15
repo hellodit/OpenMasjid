@@ -9,6 +9,11 @@ const crumbs = computed<string[]>(() => {
   if (p.startsWith('/admin/events')) return ['Manajemen', 'Kegiatan']
   if (p.startsWith('/admin/categories')) return ['Manajemen', 'Kategori']
   if (p.startsWith('/admin/registrants')) return ['Manajemen', 'Pendaftar']
+  if (p.startsWith('/admin/cashbook/transactions')) return ['Buku Kas', 'Transaksi']
+  if (p.startsWith('/admin/cashbook/accounts')) return ['Buku Kas', 'Akun Kas']
+  if (p.startsWith('/admin/cashbook/categories')) return ['Buku Kas', 'Kategori']
+  if (p.startsWith('/admin/cashbook/reports')) return ['Buku Kas', 'Laporan']
+  if (p.startsWith('/admin/cashbook')) return ['Buku Kas', 'Ringkasan']
   if (p.startsWith('/admin/settings')) return ['Sistem', 'Pengaturan']
   return ['Manajemen']
 })

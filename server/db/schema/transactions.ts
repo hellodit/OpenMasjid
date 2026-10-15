@@ -6,13 +6,13 @@ import {
   numeric,
   pgTable,
   text,
-  timestamp,
   uuid,
 } from 'drizzle-orm/pg-core'
 import { cashAccounts } from './cashAccounts'
 import { transactionCategories } from './transactionCategories'
 import { users } from './users'
 import { transactionType } from './_enums'
+import { timestamps } from './_columns'
 
 export const transactions = pgTable(
   'transactions',
@@ -41,13 +41,7 @@ export const transactions = pgTable(
     updatedBy: uuid('updated_by').references(() => users.id, {
       onDelete: 'set null',
     }),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .default(sql`now()`),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .default(sql`now()`),
-    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    ...timestamps,
   },
   (t) => [
     index('transactions_date_idx')

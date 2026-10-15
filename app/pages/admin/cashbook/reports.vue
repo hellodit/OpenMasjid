@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useAuthSession } from '~/composables/useAuthSession'
 import { useCashbookSummary } from '~/composables/useCashbook'
 import { firstOfMonthIso, formatRupiah, todayIso } from '~/utils/format'
 
@@ -12,7 +11,6 @@ const range = ref({ from: firstOfMonthIso(today), to: todayIso() })
 const breakdownType = ref<'income' | 'expense'>('expense')
 
 const summaryQuery = computed(() => ({ from: range.value.from, to: range.value.to }))
-const { authHeaders } = useAuthSession()
 const { data: summary } = useCashbookSummary(summaryQuery)
 
 interface BreakdownResponse {
@@ -38,22 +36,13 @@ const breakdownQuery = computed(() => ({
 
 const { data: breakdown } = useFetch<BreakdownResponse>(
   '/api/admin/cashbook/reports/by-category',
-  { query: breakdownQuery, headers: authHeaders(), watch: [breakdownQuery] },
+  { query: breakdownQuery, watch: [breakdownQuery] },
 )
 
-async function exportCsv() {
+function exportCsv() {
+  // Cookie-authenticated GET; the server sets Content-Disposition: attachment.
   const params = new URLSearchParams({ from: range.value.from, to: range.value.to })
-  const res = await fetch(`/api/admin/cashbook/reports/export?${params}`, {
-    headers: authHeaders(),
-  })
-  if (!res.ok) return
-  const blob = await res.blob()
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `laporan-${range.value.from}_${range.value.to}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
+  window.location.href = `/api/admin/cashbook/reports/export?${params}`
 }
 
 const inputCls =

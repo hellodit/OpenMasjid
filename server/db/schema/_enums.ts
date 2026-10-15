@@ -32,3 +32,16 @@ export const transactionCategoryType = pgEnum('transaction_category_type', [
   'income',
   'expense',
 ])
+
+/** Maps 1:1 to `adhan.CalculationMethod.*` (see shared/utils/prayer.ts). */
+export const prayerCalcMethod = pgEnum('prayer_calc_method', [
+  'kemenag',
+  'mwl',
+  'isna',
+  'egypt',
+  'makkah',
+  'karachi',
+  'singapore',
+])
+
+export const asrMadhab = pgEnum('asr_madhab', ['shafi', 'hanafi'])

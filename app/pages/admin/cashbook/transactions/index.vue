@@ -6,7 +6,6 @@ import {
   useTransactions,
   type TransactionFilters,
 } from '~/composables/useCashbook'
-import { useAuthSession } from '~/composables/useAuthSession'
 
 definePageMeta({ layout: 'admin' })
 useHead({ title: 'Transaksi — Buku Kas' })
@@ -25,7 +24,6 @@ watch(
 const { data: txData, pending } = useTransactions(filters)
 const { data: accounts } = useCashAccounts()
 const { data: categories } = useTransactionCategories({ includeArchived: true })
-const { authHeaders } = useAuthSession()
 
 const router = useRouter()
 
@@ -38,7 +36,7 @@ async function exportCsv() {
   if (filters.value.from) params.set('from', filters.value.from)
   if (filters.value.to) params.set('to', filters.value.to)
   const res = await fetch(`/api/admin/cashbook/reports/export?${params.toString()}`, {
-    headers: authHeaders(),
+   
   })
   if (!res.ok) return
   const blob = await res.blob()

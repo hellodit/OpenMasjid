@@ -1,9 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Lora:wght@400;500;600;700&family=Amiri:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap");
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 @layer components {
   .khatam-bg {
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'><g fill='none' stroke='white' stroke-width='1' stroke-opacity='0.045'><path d='M80 10 L104 34 L136 34 L136 66 L160 80 L136 94 L136 126 L104 126 L80 150 L56 126 L24 126 L24 94 L0 80 L24 66 L24 34 L56 34 Z'/><path d='M80 30 L96 46 L120 46 L120 70 L136 80 L120 90 L120 114 L96 114 L80 130 L64 114 L40 114 L40 90 L24 80 L40 70 L40 46 L64 46 Z'/></g></svg>");

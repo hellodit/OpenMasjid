@@ -1,38 +1,41 @@
 <script setup lang="ts">
+import type { FormSubmitEvent } from '@nuxt/ui'
+import { loginSchema, type LoginInput } from '#shared/schemas/auth'
+
 definePageMeta({ layout: 'auth' })
 useHead({ title: 'Masuk — OpenMasjid CMS' })
 
-const email = ref('')
-const password = ref('')
-const remember = ref(true)
+const route = useRoute()
+const { signIn, isStaff } = useAuth()
+
+const state = reactive<Partial<LoginInput>>({ email: '', password: '', remember: true })
 const showPassword = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
-const router = useRouter()
-
-const submit = async () => {
+async function onSubmit(event: FormSubmitEvent<LoginInput>) {
   error.value = null
-
-  if (!email.value || !password.value) {
-    error.value = 'Email dan password wajib diisi.'
-    return
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) {
-    error.value = 'Format email tidak valid.'
-    return
-  }
-  if (password.value.length < 6) {
-    error.value = 'Password minimal 6 karakter.'
-    return
-  }
-
   loading.value = true
-  // TODO: panggil endpoint auth sebenarnya
-  await new Promise(r => setTimeout(r, 700))
-  loading.value = false
-
-  router.push('/admin')
+  try {
+    await signIn(event.data.email, event.data.password, event.data.remember)
+    if (!isStaff.value) {
+      error.value = 'Akun Anda bukan pengurus DKM sehingga tidak dapat membuka CMS.'
+      return
+    }
+    const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/')
+      ? route.query.redirect
+      : '/admin'
+    await navigateTo(redirect)
+  }
+  catch (e) {
+    const err = e as { status?: number, message?: string }
+    error.value = err.status === 401 || err.status === 403
+      ? (err.status === 403 && err.message ? err.message : 'Email atau password salah.')
+      : (err.message || 'Gagal masuk. Coba lagi.')
+  }
+  finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -45,76 +48,61 @@ const submit = async () => {
       Selamat datang kembali
     </h1>
     <p class="text-sm text-cms-muted m-0 mb-7 max-w-[380px]">
-      Silakan masuk dengan akun pengurus untuk membuka dasbor manajemen kegiatan masjid.
+      Silakan masuk dengan akun pengurus untuk membuka dasbor manajemen masjid.
     </p>
 
-    <form
+    <UForm
+      :schema="loginSchema"
+      :state="state"
       class="rounded-cms-lg border border-cms-border bg-cms-surface shadow-cms p-6 sm:p-7 flex flex-col gap-4"
-      novalidate
-      @submit.prevent="submit"
+      @submit="onSubmit"
     >
-      <div
+      <UAlert
         v-if="error"
-        class="flex items-start gap-2 rounded-cms border border-cms-rose-soft bg-cms-rose-soft text-cms-rose px-3 py-2.5 text-[13px]"
-        role="alert"
-      >
-        <Icon name="lucide:alert-circle" class="mt-0.5 shrink-0" />
-        <span>{{ error }}</span>
-      </div>
+        color="error"
+        variant="subtle"
+        icon="i-lucide-alert-circle"
+        :description="error"
+      />
 
-      <AdminFormField label="Email" required>
-        <div class="relative">
-          <Icon
-            name="lucide:mail"
-            class="absolute left-3 top-1/2 -translate-y-1/2 text-cms-muted"
-            size="18"
-          />
-          <input
-            v-model="email"
-            type="email"
-            autocomplete="email"
-            placeholder="nama@masjid.id"
-            class="cms-input w-full h-11 pl-10 pr-3 rounded-cms border border-cms-border bg-cms-surface text-sm text-cms-ink placeholder:text-cms-muted-2 outline-none transition-shadow"
-          >
-        </div>
-      </AdminFormField>
+      <UFormField label="Email" name="email" required>
+        <UInput
+          v-model="state.email"
+          type="email"
+          autocomplete="email"
+          placeholder="nama@masjid.id"
+          icon="i-lucide-mail"
+          size="lg"
+          class="w-full"
+        />
+      </UFormField>
 
-      <AdminFormField label="Password" required>
-        <template #default>
-          <div class="relative">
-            <Icon
-              name="lucide:lock"
-              class="absolute left-3 top-1/2 -translate-y-1/2 text-cms-muted"
-              size="18"
-            />
-            <input
-              v-model="password"
-              :type="showPassword ? 'text' : 'password'"
-              autocomplete="current-password"
-              placeholder="••••••••"
-              class="cms-input w-full h-11 pl-10 pr-10 rounded-cms border border-cms-border bg-cms-surface text-sm text-cms-ink placeholder:text-cms-muted-2 outline-none transition-shadow"
-            >
-            <button
-              type="button"
+      <UFormField label="Password" name="password" required>
+        <UInput
+          v-model="state.password"
+          :type="showPassword ? 'text' : 'password'"
+          autocomplete="current-password"
+          placeholder="••••••••"
+          icon="i-lucide-lock"
+          size="lg"
+          class="w-full"
+          :ui="{ trailing: 'pe-1' }"
+        >
+          <template #trailing>
+            <UButton
+              color="neutral"
+              variant="link"
+              size="sm"
+              :icon="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'"
               :aria-label="showPassword ? 'Sembunyikan password' : 'Tampilkan password'"
-              class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 grid place-items-center rounded-md text-cms-muted hover:text-cms-ink hover:bg-cms-surface-2"
               @click="showPassword = !showPassword"
-            >
-              <Icon :name="showPassword ? 'lucide:eye-off' : 'lucide:eye'" size="18" />
-            </button>
-          </div>
-        </template>
-      </AdminFormField>
+            />
+          </template>
+        </UInput>
+      </UFormField>
 
       <div class="flex items-center justify-between -mt-1">
-        <label class="inline-flex items-center gap-2 text-[13px] text-cms-ink-2 cursor-pointer select-none">
-          <input
-            v-model="remember"
-            type="checkbox"
-            class="w-4 h-4 rounded border-cms-border-strong text-cms-green-700 focus:ring-cms-green-300"
-          >
-          Ingat saya
-        </label>
+        <UCheckbox v-model="state.remember" name="remember" label="Ingat saya" />
         <NuxtLink
           to="/auth/forgot-password"
           class="text-[13px] font-semibold text-cms-green-700 hover:text-cms-green-800"
@@ -123,32 +111,18 @@ const submit = async () => {
         </NuxtLink>
       </div>
 
-      <AdminBtn
+      <UButton
         type="submit"
-        variant="primary"
         size="lg"
-        class="w-full justify-center mt-1"
-      >
-        <Icon v-if="loading" name="lucide:loader-2" class="animate-spin" size="18" />
-        <span>{{ loading ? 'Memverifikasi...' : 'Masuk ke Dasbor' }}</span>
-      </AdminBtn>
-
-      <div class="flex items-center gap-3 my-1 cms-motif-divider text-[11px] uppercase tracking-[1.2px] text-cms-muted">
-        <span>atau</span>
-      </div>
-
-      <button
-        type="button"
-        class="inline-flex items-center justify-center gap-2 h-11 rounded-cms border border-cms-border bg-cms-surface text-sm font-semibold text-cms-ink hover:bg-cms-surface-2 transition-colors"
-      >
-        <Icon name="lucide:building-2" size="18" />
-        Masuk dengan SSO Yayasan
-      </button>
-    </form>
+        block
+        :loading="loading"
+        icon="i-lucide-log-in"
+        :label="loading ? 'Memverifikasi...' : 'Masuk ke Dasbor'"
+      />
+    </UForm>
 
     <p class="text-[13px] text-cms-muted text-center mt-6">
-      Belum memiliki akun pengurus?
-      <a href="#" class="font-semibold text-cms-green-700 hover:text-cms-green-800">Hubungi admin masjid</a>
+      Belum memiliki akun pengurus? Hubungi admin masjid.
     </p>
   </div>
 </template>

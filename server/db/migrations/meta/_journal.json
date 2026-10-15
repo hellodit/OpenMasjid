@@ -15,6 +15,13 @@
       "when": 1779056303505,
       "tag": "0001_salty_marvex",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792024867083,
+      "tag": "0002_better_auth_relations",
+      "breakpoints": true
     }
   ]
 }

@@ -9,7 +9,7 @@ export async function runHealthCheck(): Promise<boolean> {
   const stamp = new Date().toISOString()
   const probes: Probe[] = []
 
-  await Promise.all([pingPostgres(probes), pingSupabaseRest(probes)])
+  await pingPostgres(probes)
 
   const ok = probes.every((p) => p.ok)
   const totalMs = Date.now() - startedAt
@@ -36,34 +36,6 @@ async function pingPostgres(out: Probe[]): Promise<void> {
     out.push({ name: 'postgres', ok: false, ms: Date.now() - t0, detail: (err as Error).message })
   } finally {
     await client?.end({ timeout: 5 })
-  }
-}
-
-async function pingSupabaseRest(out: Probe[]): Promise<void> {
-  const url = process.env.SUPABASE_URL
-  const anon = process.env.SUPABASE_ANON_KEY
-  const t0 = Date.now()
-  if (!url || !anon) {
-    out.push({
-      name: 'supabase',
-      ok: false,
-      ms: 0,
-      detail: 'SUPABASE_URL / SUPABASE_ANON_KEY not set',
-    })
-    return
-  }
-  try {
-    const res = await fetch(`${url.replace(/\/$/, '')}/rest/v1/`, {
-      headers: { apikey: anon, Authorization: `Bearer ${anon}` },
-    })
-    out.push({
-      name: 'supabase',
-      ok: res.ok,
-      ms: Date.now() - t0,
-      detail: res.ok ? undefined : `HTTP ${res.status}`,
-    })
-  } catch (err) {
-    out.push({ name: 'supabase', ok: false, ms: Date.now() - t0, detail: (err as Error).message })
   }
 }
 

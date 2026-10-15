@@ -1,29 +1,22 @@
-import { defineEventHandler } from 'h3'
-import { eq, sql } from 'drizzle-orm'
-import { z } from 'zod'
-import { requireAdmin } from '~~/server/utils/auth'
-import { readZodBody } from '~~/server/utils/validate'
-import { db } from '~~/server/utils/db'
+import { and, eq, isNull } from 'drizzle-orm'
 import { transactionCategories } from '~~/server/db/schema'
-
-const bodySchema = z.object({
-  items: z
-    .array(z.object({ id: z.string().uuid(), sortOrder: z.number().int().min(0).max(9999) }))
-    .min(1),
-})
+import { categoryReorderSchema } from '#shared/schemas/cashbook'
 
 export default defineEventHandler(async (event) => {
-  await requireAdmin(event)
-  const { items } = await readZodBody(event, bodySchema)
+  const user = await requireAdmin(event)
+  const { items } = await readZodBody(event, categoryReorderSchema)
 
+  let updated = 0
   await db.transaction(async (tx) => {
     for (const item of items) {
-      await tx
+      const rows = await tx
         .update(transactionCategories)
-        .set({ sortOrder: item.sortOrder, updatedAt: sql`now()` })
-        .where(eq(transactionCategories.id, item.id))
+        .set({ sortOrder: item.sortOrder, updatedBy: user.id })
+        .where(and(eq(transactionCategories.id, item.id), isNull(transactionCategories.deletedAt)))
+        .returning({ id: transactionCategories.id })
+      updated += rows.length
     }
   })
 
-  return { updated: items.length }
+  return { updated }
 })

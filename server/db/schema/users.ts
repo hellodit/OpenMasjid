@@ -9,28 +9,29 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core'
 import { userRole } from './_enums'
+import { timestamps } from './_columns'
 
+/**
+ * Application users. Also the Better Auth `user` model
+ * (see server/utils/auth.ts — `name` is mapped to `fullName`).
+ */
 export const users = pgTable(
   'users',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     email: text('email').notNull(),
+    emailVerified: boolean('email_verified').notNull().default(false),
     fullName: text('full_name').notNull(),
+    image: text('image'),
+    avatarAssetId: uuid('avatar_asset_id'),
     phone: text('phone'),
     role: userRole('role').notNull().default('jamaah'),
-    avatarAssetId: uuid('avatar_asset_id'),
     lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
     isActive: boolean('is_active').notNull().default(true),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .default(sql`now()`),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .default(sql`now()`),
-    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    ...timestamps,
   },
   (t) => [
-    uniqueIndex('users_email_unique').on(t.email),
+    uniqueIndex('users_email_unique').on(sql`lower(${t.email})`),
     index('users_role_idx').on(t.role),
   ],
 )

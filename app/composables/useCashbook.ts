@@ -83,17 +83,9 @@ export interface CashbookSummary {
   totalBalance: string
 }
 
-function useAuthFetch() {
-  const { authHeaders } = useAuthSession()
-  return <T>(url: string, opts: Parameters<typeof $fetch<T>>[1] = {}) =>
-    $fetch<T>(url, { ...opts, headers: { ...authHeaders(), ...(opts.headers ?? {}) } })
-}
-
 export function useCashAccounts(opts: { includeArchived?: boolean } = {}) {
-  const { authHeaders } = useAuthSession()
   return useFetch<CashAccount[]>('/api/admin/cashbook/accounts', {
     query: { includeArchived: opts.includeArchived ? '1' : '0' },
-    headers: authHeaders(),
   })
 }
 
@@ -101,13 +93,11 @@ export function useTransactionCategories(opts: {
   includeArchived?: boolean
   type?: CategoryType
 } = {}) {
-  const { authHeaders } = useAuthSession()
   return useFetch<TransactionCategory[]>('/api/admin/cashbook/categories', {
     query: {
       includeArchived: opts.includeArchived ? '1' : '0',
       ...(opts.type ? { type: opts.type } : {}),
     },
-    headers: authHeaders(),
   })
 }
 
@@ -126,22 +116,18 @@ export function categoriesAsTree(rows: TransactionCategory[]): CategoryNode[] {
 }
 
 export function useTransactions(filters: Ref<TransactionFilters>) {
-  const { authHeaders } = useAuthSession()
   return useFetch<{
     data: TransactionListItem[]
     pagination: { page: number; pageSize: number; total: number; totalPages: number }
   }>('/api/admin/cashbook/transactions', {
     query: filters,
-    headers: authHeaders(),
     watch: [filters],
   })
 }
 
 export function useCashbookSummary(params: Ref<{ period?: string; date?: string; from?: string; to?: string }>) {
-  const { authHeaders } = useAuthSession()
   return useFetch<CashbookSummary>('/api/admin/cashbook/reports/summary', {
     query: params,
-    headers: authHeaders(),
     watch: [params],
   })
 }
@@ -162,7 +148,8 @@ export function usePublicCashbookSummary(params: Ref<{ period?: 'month' | 'year'
 }
 
 export function useCashbookApi() {
-  const fetcher = useAuthFetch()
+  // Session cookie is sent automatically (same origin).
+  const fetcher = $fetch
   return {
     createAccount: (body: Partial<CashAccount>) =>
       fetcher<CashAccount>('/api/admin/cashbook/accounts', { method: 'POST', body }),

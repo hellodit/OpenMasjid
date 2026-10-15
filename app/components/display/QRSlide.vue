@@ -18,7 +18,7 @@ onMounted(async () => {
 <template>
   <div class="relative z-10">
     <div
-      class="flex items-center text-gold-2 uppercase"
+      class="flex items-center text-tv-gold-2 uppercase"
       style="gap: 1.04vw; margin-bottom: 1.15vw; font-size: 0.68vw; letter-spacing: 0.26vw;"
     >
       Halaman Masjid Online
@@ -29,7 +29,7 @@ onMounted(async () => {
     </div>
 
     <div
-      class="grid items-center border border-line"
+      class="grid items-center border border-tv-line"
       style="grid-template-columns: auto 1fr; gap: 2.5vw; border-radius: 0.94vw; padding: 1.5vw 2vw; background: oklch(0.16 0.04 155 / 0.6);"
     >
       <div
@@ -46,25 +46,25 @@ onMounted(async () => {
 
       <div class="leading-tight">
         <div
-          class="uppercase text-muted"
+          class="uppercase text-tv-muted"
           style="font-size: 0.7vw; letter-spacing: 0.18vw;"
         >
           Pindai dengan kamera
         </div>
         <div
-          class="font-serif font-semibold text-gold"
+          class="font-serif font-semibold text-tv-gold"
           style="font-size: 2vw; margin-top: 0.6vw; line-height: 1.1;"
         >
           Halaman Utama Masjid
         </div>
         <div
-          class="text-ink-2"
+          class="text-tv-ink-2"
           style="font-size: 1.05vw; margin-top: 0.9vw; line-height: 1.55; max-width: 30vw;"
         >
           Lihat profil masjid, jadwal sholat, dan agenda kegiatan langsung di gawai Anda.
         </div>
         <div
-          class="font-mono text-gold-2 truncate"
+          class="font-mono text-tv-gold-2 truncate"
           style="font-size: 0.95vw; margin-top: 1.05vw; max-width: 30vw;"
         >
           {{ homeUrl }}

@@ -12,11 +12,11 @@ defineProps<Props>()
 
 <template>
   <div
-    class="relative flex items-center overflow-hidden border border-line"
+    class="relative flex items-center overflow-hidden border border-tv-line"
     style="height: 4.58vw; border-radius: 0.83vw; background: oklch(0.16 0.04 155 / 0.6);"
   >
     <div
-      class="relative z-[2] flex items-center h-full bg-gold text-bg font-bold uppercase"
+      class="relative z-[2] flex items-center h-full bg-tv-gold text-tv-bg font-bold uppercase"
       style="gap: 0.63vw; padding: 0 1.46vw; font-size: 0.73vw; letter-spacing: 0.21vw; box-shadow: 6px 0 12px -6px oklch(0.10 0.03 155 / 0.6);"
     >
       <svg
@@ -42,12 +42,12 @@ defineProps<Props>()
         <span
           v-for="(item, i) in [...items, ...items]"
           :key="i"
-          class="inline-flex items-center text-ink"
+          class="inline-flex items-center text-tv-ink"
           style="gap: 0.73vw; font-size: 1.15vw;"
         >
-          <b class="text-gold font-semibold" style="margin-right: 0.31vw;">{{ item.prefix }}</b>
+          <b class="text-tv-gold font-semibold" style="margin-right: 0.31vw;">{{ item.prefix }}</b>
           {{ item.body }}
-          <span class="text-gold" style="font-size: 0.73vw;">✦</span>
+          <span class="text-tv-gold" style="font-size: 0.73vw;">✦</span>
         </span>
       </div>
     </div>

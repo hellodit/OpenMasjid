@@ -46,7 +46,7 @@ onBeforeUnmount(() => {
         v-for="(_, i) in slides"
         :key="i"
         class="rounded-full transition-all duration-300"
-        :class="activeIndex === i ? 'bg-gold' : 'bg-line'"
+        :class="activeIndex === i ? 'bg-tv-gold' : 'bg-tv-line'"
         :style="activeIndex === i
           ? 'width: 1.46vw; height: 0.42vw;'
           : 'width: 0.42vw; height: 0.42vw;'"

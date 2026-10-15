@@ -1,24 +1,16 @@
-import { defineEventHandler } from 'h3'
 import { and, desc, eq, gte, isNull, lte, sql } from 'drizzle-orm'
-import { requireAdmin } from '~~/server/utils/auth'
-import { db } from '~~/server/utils/db'
-import { transactionCategories, transactions } from '~~/server/db/schema'
-import { resolvePeriod } from '~~/server/utils/period'
-import { readZodQuery } from '~~/server/utils/validate'
 import { z } from 'zod'
+import { transactionCategories, transactions } from '~~/server/db/schema'
+import { periodQuery } from '#shared/schemas/common'
 
-const querySchema = z.object({
+const querySchema = periodQuery.extend({
   type: z.enum(['income', 'expense']).default('expense'),
-  period: z.enum(['day', 'week', 'month', 'year']).optional(),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 })
 
 export default defineEventHandler(async (event) => {
-  await requireAdmin(event)
+  await requireStaff(event)
   const params = readZodQuery(event, querySchema)
-  const range = resolvePeriod(params)
+  const range = resolvePeriod(params, await getMosqueTimezone())
 
   const rows = await db
     .select({
@@ -30,10 +22,7 @@ export default defineEventHandler(async (event) => {
       count: sql<number>`COUNT(*)::int`,
     })
     .from(transactions)
-    .leftJoin(
-      transactionCategories,
-      eq(transactions.categoryId, transactionCategories.id),
-    )
+    .leftJoin(transactionCategories, eq(transactions.categoryId, transactionCategories.id))
     .where(
       and(
         isNull(transactions.deletedAt),
@@ -50,11 +39,11 @@ export default defineEventHandler(async (event) => {
     )
     .orderBy(desc(sql`SUM(${transactions.amount})`))
 
-  const grandTotal = rows.reduce((sum, r) => sum + Number(r.total), 0)
+  const grandTotal = sumMoney(rows.map((r) => r.total))
   const breakdown = rows.map((r) => ({
     ...r,
-    percentage: grandTotal > 0 ? ((Number(r.total) / grandTotal) * 100).toFixed(2) : '0.00',
+    percentage: Number(grandTotal) > 0 ? ((Number(r.total) / Number(grandTotal)) * 100).toFixed(2) : '0.00',
   }))
 
-  return { range, type: params.type, grandTotal: grandTotal.toFixed(2), breakdown }
+  return { range, type: params.type, grandTotal, breakdown }
 })

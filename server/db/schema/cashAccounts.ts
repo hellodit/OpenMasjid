@@ -7,10 +7,11 @@ import {
   numeric,
   pgTable,
   text,
-  timestamp,
   uuid,
 } from 'drizzle-orm/pg-core'
 import { cashAccountType } from './_enums'
+import { timestamps } from './_columns'
+import { users } from './users'
 
 export const cashAccounts = pgTable(
   'cash_accounts',
@@ -25,13 +26,9 @@ export const cashAccounts = pgTable(
       .default('0'),
     sortOrder: integer('sort_order').notNull().default(0),
     isActive: boolean('is_active').notNull().default(true),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .default(sql`now()`),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .default(sql`now()`),
-    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
+    ...timestamps,
   },
   (t) => [
     index('cash_accounts_active_sort_idx')

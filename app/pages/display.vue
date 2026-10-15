@@ -10,7 +10,7 @@ import MasjidInfo from '~/components/display/MasjidInfo.vue'
 useHead({
   title: 'OpenMasjid — TV Display',
   htmlAttrs: { lang: 'id' },
-  bodyAttrs: { class: 'overflow-hidden bg-bg text-ink font-sans' },
+  bodyAttrs: { class: 'overflow-hidden bg-tv-bg text-tv-ink font-sans' },
 })
 
 const { now, timeFull, timeHHMM, timeSec, gregorianDate, hijriDate } = useDisplayClock()

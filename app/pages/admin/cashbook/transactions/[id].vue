@@ -5,7 +5,6 @@ import {
   useCashbookApi,
   useTransactionCategories,
 } from '~/composables/useCashbook'
-import { useAuthSession } from '~/composables/useAuthSession'
 import { formatDate, formatRupiah, transactionTypeLabel } from '~/utils/format'
 
 definePageMeta({ layout: 'admin' })
@@ -14,7 +13,6 @@ useHead({ title: 'Detail Transaksi — Buku Kas' })
 const route = useRoute()
 const router = useRouter()
 const id = route.params.id as string
-const { authHeaders } = useAuthSession()
 
 const { data: txDetail, refresh, pending } = await useFetch<{
   transaction: {
@@ -36,7 +34,7 @@ const { data: txDetail, refresh, pending } = await useFetch<{
   category: { id: string; name: string; colorToken: string | null; icon: string | null } | null
   createdBy: { id: string; fullName: string } | null
   updatedBy: { id: string; fullName: string } | null
-}>(`/api/admin/cashbook/transactions/${id}`, { headers: authHeaders() })
+}>(`/api/admin/cashbook/transactions/${id}`)
 
 const { data: accounts } = useCashAccounts()
 const { data: categories } = useTransactionCategories()

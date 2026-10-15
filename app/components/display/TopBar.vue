@@ -11,7 +11,7 @@ defineProps<Props>()
   <div class="relative z-10 flex items-center justify-between flex-shrink-0">
     <div class="flex items-center" style="gap: 0.94vw;">
       <div
-        class="grid place-items-center bg-gold text-bg"
+        class="grid place-items-center bg-tv-gold text-tv-bg"
         style="width: 2.92vw; height: 2.92vw; border-radius: 0.73vw; box-shadow: 0 0 0 1px oklch(0.85 0.07 78 / 0.5), 0 8px 32px -12px oklch(0.78 0.10 78 / 0.5);"
       >
         <svg
@@ -31,14 +31,14 @@ defineProps<Props>()
       </div>
       <div>
         <div class="font-serif font-semibold" style="font-size: 1.25vw; letter-spacing: 0.026vw;">{{ name }}</div>
-        <div class="uppercase text-muted" style="font-size: 0.63vw; letter-spacing: 0.16vw; margin-top: 0.21vw;">{{ address }}</div>
+        <div class="uppercase text-tv-muted" style="font-size: 0.63vw; letter-spacing: 0.16vw; margin-top: 0.21vw;">{{ address }}</div>
       </div>
     </div>
 
-    <div class="text-right text-ink-2" style="font-size: 0.73vw; letter-spacing: 0.026vw;">
+    <div class="text-right text-tv-ink-2" style="font-size: 0.73vw; letter-spacing: 0.026vw;">
       <span class="font-mono font-medium">{{ time }}</span>
-      <span class="inline-flex items-center text-gold" style="margin-left: 0.83vw; gap: 0.42vw;">
-        <span class="rounded-full bg-gold animate-gold-pulse" style="width: 0.42vw; height: 0.42vw;" />
+      <span class="inline-flex items-center text-tv-gold" style="margin-left: 0.83vw; gap: 0.42vw;">
+        <span class="rounded-full bg-tv-gold animate-gold-pulse" style="width: 0.42vw; height: 0.42vw;" />
         SIARAN LANGSUNG
       </span>
     </div>
