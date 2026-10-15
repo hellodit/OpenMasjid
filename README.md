@@ -241,6 +241,7 @@ Pemeriksaan kualitas & build production:
 ```bash
 bun run lint
 bun run typecheck
+bun run test             # unit test
 bun run test:isolation   # uji isolasi antar masjid (server harus jalan)
 bun run build && bun run preview
 ```

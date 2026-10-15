@@ -27,6 +27,9 @@ Baca file ini sebelum mengubah kode.
 
 Versi di-pin persis di `package.json`. `typescript` (5.9) dan `vue-tsc` (3.1) sengaja di-pin
 supaya `nuxi typecheck` berjalan — TypeScript 6/7 belum didukung vue-tsc.
+`vue` di-pin dan dikunci lewat `"overrides"`: lebih dari satu versi Vue di `node_modules` membuat
+Nitro menyalin paket `vue` yang tidak lengkap ke `.output` dan server production gagal start
+(`Cannot find module …/vue/index.mjs`). Saat upgrade Nuxt, naikkan `vue` + override bersamaan.
 
 > Drizzle 1.0 (RQB v2 / `defineRelations`) masih RC. Saat sudah stabil, migrasi relasi
 > dari `server/db/schema/relations.ts` ke `defineRelations` dan cek kompatibilitas adapter Better Auth.
@@ -226,6 +229,7 @@ bun install
 bun run dev                 # http://localhost:3000
 bun run lint                # eslint (harus 0 error)
 bun run typecheck           # nuxi typecheck (harus 0 error)
+bun run test                # unit test vitest (tests/unit — logika murni, tanpa DB)
 bun run build
 
 bun run db:generate --name x   # buat migrasi dari perubahan skema
@@ -247,9 +251,22 @@ Postgres lokal: jalankan `server/db/sql/app-role.sql` sekali, lalu `DATABASE_URL
 
 ---
 
+## 8a. CI (`.github/workflows/ci.yml`)
+
+Setiap PR dan push ke `main` menjalankan dua job:
+- **checks** — `lint`, `typecheck`, `test` (unit).
+- **isolation** — Postgres 16 → `db:migrate` → `app-role.sql` → `db:seed` → `build` →
+  jalankan `.output/server/index.mjs` (server production) dengan role `openmasjid_app` →
+  `test:isolation`.
+
+Logika domain murni taruh di `shared/utils` atau util tanpa import `db`, supaya bisa diuji di
+`tests/unit`. Endpoint tenant baru wajib ditambahkan ke `scripts/test-isolation.ts`.
+
+---
+
 ## 9. Checklist sebelum commit
 
-- [ ] `bun run lint` dan `bun run typecheck` bersih.
+- [ ] `bun run lint`, `bun run typecheck`, dan `bun run test` bersih (CI akan menolak jika tidak).
 - [ ] Endpoint tenant baru memakai `defineTenantHandler` dengan level akses yang tepat dan `db` dari context.
 - [ ] Tabel tenant baru: `tenant_id`, policy RLS + FORCE, composite FK, unique per tenant.
 - [ ] Query ke `users` difilter `tenant_id`.

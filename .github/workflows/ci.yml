@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  BUN_VERSION: 1.4.2
+  NODE_VERSION: 22
+
+jobs:
+  checks:
+    name: Lint, typecheck & unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+      - run: bun run typecheck
+      - run: bun run test
+
+  isolation:
+    name: Build & tenant isolation suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: openmasjid
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Owner role: migrations, seed, test cleanup.
+      DATABASE_DIRECT_URL: postgres://postgres:postgres@localhost:5432/openmasjid
+      # Restricted role (no BYPASSRLS) used by the app — RLS must apply in CI too.
+      DATABASE_URL: postgres://openmasjid_app:app-ci-password@localhost:5432/openmasjid
+      BETTER_AUTH_SECRET: ci-only-secret-not-used-anywhere-else-0123456789
+      BETTER_AUTH_URL: http://localhost:3000
+      SEED_TENANT_SLUG: al-hikmah
+      SEED_TENANT_NAME: Masjid Al-Hikmah
+      SEED_ADMIN_EMAIL: admin@openmasjid.test
+      SEED_ADMIN_PASSWORD: admin12345
+      SEED_ADMIN_NAME: Admin DKM
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: bun install --frozen-lockfile
+
+      - name: Migrate
+        run: bun run db:migrate
+
+      - name: Create restricted app role
+        run: |
+          psql "$DATABASE_DIRECT_URL" -v ON_ERROR_STOP=1 -f server/db/sql/app-role.sql
+          psql "$DATABASE_DIRECT_URL" -v ON_ERROR_STOP=1 -c "ALTER ROLE openmasjid_app PASSWORD 'app-ci-password'"
+
+      - name: Seed
+        run: bun run db:seed
+
+      - name: Build
+        run: bun run build
+
+      - name: Start server
+        run: |
+          PORT=3000 node .output/server/index.mjs > server.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:3000/api/health > /dev/null && exit 0
+            sleep 1
+          done
+          cat server.log
+          exit 1
+
+      - name: Tenant isolation suite
+        run: bun run test:isolation
+
+      - name: Server log
+        if: failure()
+        run: cat server.log
