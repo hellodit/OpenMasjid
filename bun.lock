@@ -5,6 +5,7 @@
     "": {
       "name": "masjidku",
       "dependencies": {
+        "@better-auth/core": "1.7.8",
         "@nuxt/eslint": "1.15.2",
         "@nuxt/image": "2.0.0",
         "@nuxt/ui": "4.11.3",

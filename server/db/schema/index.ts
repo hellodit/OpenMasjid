@@ -1,4 +1,5 @@
 export * from './_enums'
+export * from './tenants'
 export * from './users'
 export * from './auth'
 export * from './mosqueProfile'

@@ -45,3 +45,5 @@ export const prayerCalcMethod = pgEnum('prayer_calc_method', [
 ])
 
 export const asrMadhab = pgEnum('asr_madhab', ['shafi', 'hanafi'])
+
+export const tenantStatus = pgEnum('tenant_status', ['active', 'suspended'])

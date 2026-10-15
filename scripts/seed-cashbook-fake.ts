@@ -1,23 +1,26 @@
 import 'dotenv/config'
 import { and, eq, isNull, like } from 'drizzle-orm'
-import { drizzle } from 'drizzle-orm/postgres-js'
-import postgres from 'postgres'
-import * as schema from '../server/db/schema'
 import {
   cashAccounts,
+  tenants,
   transactionCategories,
   transactions,
   users,
 } from '../server/db/schema'
+import type { DbOrTx } from '../server/utils/db'
 
-const url = process.env.DATABASE_DIRECT_URL
-if (!url) {
-  console.error('DATABASE_DIRECT_URL is not set — aborting.')
+if (process.env.DATABASE_DIRECT_URL) process.env.DATABASE_URL = process.env.DATABASE_DIRECT_URL
+const { db: rootDb, withTenant } = await import('../server/utils/db')
+
+// Fake data goes into one mosque: SEED_TENANT_SLUG (default al-hikmah).
+const tenantSlug = process.env.SEED_TENANT_SLUG ?? 'al-hikmah'
+const tenant = await rootDb.query.tenants.findFirst({ where: eq(tenants.slug, tenantSlug) })
+if (!tenant) {
+  console.error(`Tenant /${tenantSlug} not found — run \`bun run db:seed\` first.`)
   process.exit(1)
 }
-
-const client = postgres(url, { max: 1 })
-const db = drizzle(client, { schema, casing: 'snake_case' })
+/** Tenant-scoped transaction handle, set in main(). */
+let db: DbOrTx
 
 const SEED_TAG = '[fake]'
 const PERIOD_DAYS = 30
@@ -87,11 +90,11 @@ async function loadCategories(): Promise<{ income: CategoryRow[]; expense: Categ
 
 async function pickCreator(): Promise<string> {
   const admin = await db.query.users.findFirst({
-    where: eq(users.role, 'admin'),
+    where: and(eq(users.tenantId, tenant!.id), eq(users.role, 'admin')),
     columns: { id: true },
   })
   if (admin) return admin.id
-  const anyUser = await db.query.users.findFirst({ columns: { id: true } })
+  const anyUser = await db.query.users.findFirst({ where: eq(users.tenantId, tenant!.id), columns: { id: true } })
   if (anyUser) return anyUser.id
 
   console.log('• Tabel users kosong — bikin dummy admin buat createdBy.')
@@ -334,9 +337,12 @@ async function main() {
   console.log(`  Tip: cleanup dengan \`tsx scripts/seed-cashbook-fake.ts --clean\``)
 }
 
-main()
+withTenant(tenant.id, async (tx) => {
+  db = tx
+  await main()
+})
   .catch((err) => {
     console.error(err)
     process.exitCode = 1
   })
-  .finally(() => client.end({ timeout: 5 }))
+  .finally(() => process.exit())

@@ -6,10 +6,20 @@
  */
 import 'dotenv/config'
 import { and, eq, inArray, isNull, like, sql } from 'drizzle-orm'
-import { categories, events, registrants, users } from '../server/db/schema'
+import { categories, events, registrants, tenants, users } from '../server/db/schema'
+import type { DbOrTx } from '../server/utils/db'
 
 if (process.env.DATABASE_DIRECT_URL) process.env.DATABASE_URL = process.env.DATABASE_DIRECT_URL
-const { db } = await import('../server/utils/db')
+const { db: rootDb, withTenant } = await import('../server/utils/db')
+
+const tenantSlug = process.env.SEED_TENANT_SLUG ?? 'al-hikmah'
+const tenant = await rootDb.query.tenants.findFirst({ where: eq(tenants.slug, tenantSlug) })
+if (!tenant) {
+  console.error(`Tenant /${tenantSlug} not found — run \`bun run db:seed\` first.`)
+  process.exit(1)
+}
+/** Tenant-scoped transaction handle (set before seed/clean run). */
+let db: DbOrTx
 const { saveEvent } = await import('../server/utils/events')
 const { dateInTimeZone } = await import('../shared/utils/prayer')
 
@@ -28,7 +38,7 @@ async function clean() {
     await db.delete(registrants).where(inArray(registrants.eventId, ids))
     await db.delete(events).where(inArray(events.id, ids))
   }
-  const fakeUsers = await db.select({ id: users.id }).from(users).where(like(users.email, `%${FAKE_DOMAIN}`))
+  const fakeUsers = await db.select({ id: users.id }).from(users).where(and(eq(users.tenantId, tenant!.id), like(users.email, `%${FAKE_DOMAIN}`)))
   if (fakeUsers.length) {
     await db.delete(registrants).where(inArray(registrants.userId, fakeUsers.map((u) => u.id)))
     await db.delete(users).where(inArray(users.id, fakeUsers.map((u) => u.id)))
@@ -37,7 +47,7 @@ async function clean() {
 }
 
 async function seed() {
-  const admin = await db.query.users.findFirst({ where: and(eq(users.role, 'admin'), isNull(users.deletedAt)) })
+  const admin = await db.query.users.findFirst({ where: and(eq(users.tenantId, tenant!.id), eq(users.role, 'admin'), isNull(users.deletedAt)) })
   if (!admin) throw new Error('Run `bun run db:seed` first (needs an admin user).')
   const cats = await db.query.categories.findMany({ where: isNull(categories.deletedAt) })
   const cat = (slug: string) => cats.find((c) => c.slug === slug)?.id ?? cats[0]!.id
@@ -72,7 +82,7 @@ async function seed() {
   ]
 
   for (const [i, s] of specs.entries()) {
-    const id = await saveEvent({
+    const id = await saveEvent(db, {
       title: s.title,
       arabicTitle: s.arabicTitle,
       categoryId: cat(s.cat),
@@ -115,7 +125,10 @@ async function seed() {
 }
 
 const run = process.argv.includes('--clean') ? clean : seed
-run()
+withTenant(tenant.id, async (tx) => {
+  db = tx
+  await run()
+})
   .catch((err) => {
     console.error(err)
     process.exitCode = 1

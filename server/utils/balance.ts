@@ -1,5 +1,5 @@
 import { and, eq, isNull, sql, type SQL } from 'drizzle-orm'
-import { db } from './db'
+import type { DbOrTx } from './db'
 import { cashAccounts, transactions } from '../db/schema'
 
 // Drizzle renders columns UNQUALIFIED in single-table selects (`"id"`), which
@@ -39,7 +39,7 @@ const accountColumns = {
   balance: balanceExpr,
 }
 
-export async function listAccountsWithBalance(opts?: { includeArchived?: boolean }) {
+export async function listAccountsWithBalance(db: DbOrTx, opts?: { includeArchived?: boolean }) {
   return db
     .select(accountColumns)
     .from(cashAccounts)
@@ -52,7 +52,7 @@ export async function listAccountsWithBalance(opts?: { includeArchived?: boolean
     .orderBy(cashAccounts.sortOrder, cashAccounts.name)
 }
 
-export async function getAccountWithBalance(id: string) {
+export async function getAccountWithBalance(db: DbOrTx, id: string) {
   const rows = await db
     .select(accountColumns)
     .from(cashAccounts)
@@ -65,8 +65,8 @@ export async function getAccountWithBalance(id: string) {
  * Sum of balances across ALL non-deleted accounts, archived included —
  * archiving an account must never make money disappear from the totals.
  */
-export async function getTotalBalance(): Promise<string> {
-  const accounts = await listAccountsWithBalance({ includeArchived: true })
+export async function getTotalBalance(db: DbOrTx): Promise<string> {
+  const accounts = await listAccountsWithBalance(db, { includeArchived: true })
   return sumMoney(accounts.map((a) => a.balance))
 }
 

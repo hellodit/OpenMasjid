@@ -1,30 +1,28 @@
-import { sql } from 'drizzle-orm'
 import {
   boolean,
   char,
-  check,
   integer,
   jsonb,
   numeric,
   pgTable,
   smallint,
   text,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
 import { asrMadhab, prayerCalcMethod } from './_enums'
 import { timestamps } from './_columns'
 import { users } from './users'
 
-export const MOSQUE_PROFILE_SINGLETON_ID = '00000000-0000-0000-0000-000000000001'
-
+import { tenantIdColumn, tenantIsolationPolicy } from './tenants'
 export type PrayerKey = 'subuh' | 'terbit' | 'dzuhur' | 'ashar' | 'maghrib' | 'isya'
 export type PrayerMinutes = Record<PrayerKey, number>
 
 export const mosqueProfile = pgTable(
   'mosque_profile',
   {
-    id: uuid('id').primaryKey().default(sql`'${sql.raw(MOSQUE_PROFILE_SINGLETON_ID)}'::uuid`),
-    slug: text('slug').unique(),
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: tenantIdColumn(),
     name: text('name').notNull(),
     arabicName: text('arabic_name'),
     tagline: text('tagline'),
@@ -68,10 +66,7 @@ export const mosqueProfile = pgTable(
     updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
     ...timestamps,
   },
+  // One profile per tenant (mosque).
   (t) => [
-    check(
-      'mosque_profile_singleton',
-      sql`${t.id} = '${sql.raw(MOSQUE_PROFILE_SINGLETON_ID)}'::uuid`,
-    ),
-  ],
+    tenantIsolationPolicy('mosque_profile', t.tenantId),uniqueIndex('mosque_profile_tenant_unique').on(t.tenantId)],
 )
