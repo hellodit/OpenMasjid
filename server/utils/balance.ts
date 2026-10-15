@@ -1,3 +1,4 @@
+import { sumMoney } from '../../shared/utils/money'
 import { and, eq, isNull, sql, type SQL } from 'drizzle-orm'
 import type { DbOrTx } from './db'
 import { cashAccounts, transactions } from '../db/schema'
@@ -68,32 +69,4 @@ export async function getAccountWithBalance(db: DbOrTx, id: string) {
 export async function getTotalBalance(db: DbOrTx): Promise<string> {
   const accounts = await listAccountsWithBalance(db, { includeArchived: true })
   return sumMoney(accounts.map((a) => a.balance))
-}
-
-/** Sum decimal strings without float drift (2 decimals). */
-export function sumMoney(values: Array<string | number | null | undefined>): string {
-  let cents = 0n
-  for (const v of values) {
-    if (v === null || v === undefined || v === '') continue
-    cents += toCents(String(v))
-  }
-  return fromCents(cents)
-}
-
-export function subMoney(a: string, b: string): string {
-  return fromCents(toCents(a) - toCents(b))
-}
-
-function toCents(v: string): bigint {
-  const neg = v.startsWith('-')
-  const [int = '0', frac = ''] = v.replace('-', '').split('.')
-  const cents = BigInt(int) * 100n + BigInt((frac + '00').slice(0, 2))
-  return neg ? -cents : cents
-}
-
-function fromCents(c: bigint): string {
-  const neg = c < 0n
-  const abs = neg ? -c : c
-  const s = `${abs / 100n}.${String(abs % 100n).padStart(2, '0')}`
-  return neg ? `-${s}` : s
 }

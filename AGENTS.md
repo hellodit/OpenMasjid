@@ -27,6 +27,9 @@ Baca file ini sebelum mengubah kode.
 
 Versi di-pin persis di `package.json`. `typescript` (5.9) dan `vue-tsc` (3.1) sengaja di-pin
 supaya `nuxi typecheck` berjalan — TypeScript 6/7 belum didukung vue-tsc.
+`vue` di-pin dan dikunci lewat `"overrides"`: lebih dari satu versi Vue di `node_modules` membuat
+Nitro menyalin paket `vue` yang tidak lengkap ke `.output` dan server production gagal start
+(`Cannot find module …/vue/index.mjs`). Saat upgrade Nuxt, naikkan `vue` + override bersamaan.
 
 > Drizzle 1.0 (RQB v2 / `defineRelations`) masih RC. Saat sudah stabil, migrasi relasi
 > dari `server/db/schema/relations.ts` ke `defineRelations` dan cek kompatibilitas adapter Better Auth.
@@ -47,7 +50,8 @@ OpenMasjid melayani **banyak masjid (tenant)** dari satu deployment dan satu dat
   `tenantId` dari body/query.
 - **Setiap handler tenant memakai `defineTenantHandler(access, (event, { tenant, user, db }) => …)`**
   (`server/utils/auth.ts`) dengan `access` = `public` | `staff` (admin+viewer, baca) | `admin` (tulis) |
-  `owner` (pemilik masjid: kelola pengurus). Badan handler berjalan di dalam `withTenant()` —
+  `owner` (pemilik masjid: kelola pengurus), plus `member` (siapa pun yang login di masjid itu,
+  termasuk jamaah). Badan handler berjalan di dalam `withTenant()` —
   transaksi yang mengeset `app.tenant_id`. **Gunakan `db` dari context, bukan `db` global.**
 - **RLS** aktif + `FORCE` di semua tabel data masjid (policy `<table>_tenant_isolation`, fail-closed:
   tanpa `app.tenant_id` → 0 baris). Kolom `tenant_id` default ke `app.tenant_id`, jadi insert di dalam
@@ -94,8 +98,9 @@ app/                      # Frontend (Vue)
   pages/index.vue          # landing: hero search masjid (→ /<slug>) + direktori
   pages/register.vue       # onboarding masjid baru
   components/platform/     # komponen halaman global (MosqueSearch)
-  pages/[tenant]/          # portal, display (TV), transparency, auth/*, admin/** per masjid
-  components/admin|display/
+  pages/[tenant]/          # portal, events/[slug] (daftar), my-tickets, display (TV), transparency,
+                           # auth/* (login, register jamaah), admin/** (termasuk check-in) per masjid
+  components/admin|display|portal/
 server/
   middleware/00.tenant.ts # /api/t/<slug>/… → event.context.tenant
   api/tenants.get.ts, api/onboarding/**   # global
@@ -172,7 +177,7 @@ scripts/                  # seed, seed-*-fake (SEED_TENANT_SLUG), test-isolation
   `verifications`. ID uuid (`advanced.database.generateId: 'uuid'`). Field tambahan: `tenantId`
   (diisi adapter), `role` (`input: false`), `phone`, `isActive`. Hook `session.create.before` menolak
   user nonaktif/terhapus/beda tenant.
-- Server guard: `defineTenantHandler('staff' | 'admin' | 'owner' | 'public', …)`. Role & status
+- Server guard: `defineTenantHandler('public' | 'member' | 'staff' | 'admin' | 'owner', …)`. Role & status
   dibaca ulang dari DB per request (cookie cache bisa basi). Menonaktifkan pengurus menghapus sesinya.
 - Client: `useAuth()` / `useTenantContext()`; middleware global melindungi `/[tenant]/admin/**`.
   Sembunyikan aksi tulis dari viewer (`isAdmin`) dan menu pengurus dari non-owner (`isOwner`),
@@ -201,6 +206,20 @@ scripts/                  # seed, seed-*-fake (SEED_TENANT_SLUG), test-isolation
 - **Isolasi**: data satu masjid tidak boleh terlihat/terubah/terujuk oleh masjid lain — termasuk lewat id
   dari URL/body. Akses id milik masjid lain harus menghasilkan 404 (bukan 403).
 - **Pendaftar**: status turunan `confirmed|attended|cancelled` dari `attended_at`/`cancelled_at`.
+- **Pendaftaran jamaah** (`server/utils/registration.ts`):
+  - Jamaah membuat akun di `/<slug>/auth/register` (role `member`), lalu daftar lewat
+    `POST /api/t/<slug>/public/events/<slug>/register` dan batal lewat `…/cancel` (akses `member`).
+    Tiketnya ada di `/<slug>/my-tickets` (`GET /api/t/<slug>/me/registrations`).
+  - Ketersediaan (`not-required|past|closed|full|open`) dihitung `registrationAvailability()` di
+    `shared/utils/events.ts` — dipakai server **dan** UI, jangan diduplikasi.
+  - `registerMember()` mengunci baris event `FOR UPDATE` agar kuota aman saat daftar bersamaan.
+    Pendaftaran yang dibatalkan dipakai ulang (satu baris per user per event). Batal ditolak (409)
+    setelah check-in.
+  - Tiket QR: `om1.<registrantId>.<sig>`, sig = HMAC-SHA256(`tenantId:registrantId`) dengan
+    `TICKET_SECRET` (fallback `BETTER_AUTH_SECRET`). Ganti secret = semua tiket lama tidak berlaku.
+  - Check-in: `POST /api/t/<slug>/admin/check-in` (akses `admin`, UI `/<slug>/admin/check-in`).
+    Tiket tidak valid/masjid lain → 404; pendaftaran batal atau event lain (`eventId`) → 409;
+    check-in ulang mengembalikan `alreadyCheckedIn: true`.
 - **Jadwal sholat**: `computePrayerTimes(date, settings)`; metode `kemenag` = sudut 20°/18° + ihtiyat 2 menit.
   Tanggal selalu tanggal lokal masjid.
 
@@ -226,6 +245,7 @@ bun install
 bun run dev                 # http://localhost:3000
 bun run lint                # eslint (harus 0 error)
 bun run typecheck           # nuxi typecheck (harus 0 error)
+bun run test                # unit test vitest (tests/unit — logika murni, tanpa DB)
 bun run build
 
 bun run db:generate --name x   # buat migrasi dari perubahan skema
@@ -247,9 +267,22 @@ Postgres lokal: jalankan `server/db/sql/app-role.sql` sekali, lalu `DATABASE_URL
 
 ---
 
+## 8a. CI (`.github/workflows/ci.yml`)
+
+Setiap PR dan push ke `main` menjalankan dua job:
+- **checks** — `lint`, `typecheck`, `test` (unit).
+- **isolation** — Postgres 16 → `db:migrate` → `app-role.sql` → `db:seed` → `build` →
+  jalankan `.output/server/index.mjs` (server production) dengan role `openmasjid_app` →
+  `test:isolation`.
+
+Logika domain murni taruh di `shared/utils` atau util tanpa import `db`, supaya bisa diuji di
+`tests/unit`. Endpoint tenant baru wajib ditambahkan ke `scripts/test-isolation.ts`.
+
+---
+
 ## 9. Checklist sebelum commit
 
-- [ ] `bun run lint` dan `bun run typecheck` bersih.
+- [ ] `bun run lint`, `bun run typecheck`, dan `bun run test` bersih (CI akan menolak jika tidak).
 - [ ] Endpoint tenant baru memakai `defineTenantHandler` dengan level akses yang tepat dan `db` dari context.
 - [ ] Tabel tenant baru: `tenant_id`, policy RLS + FORCE, composite FK, unique per tenant.
 - [ ] Query ke `users` difilter `tenant_id`.

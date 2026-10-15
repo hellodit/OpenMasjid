@@ -123,7 +123,7 @@ function eventSchedule(ev: PublicEvent): string {
         >
           <span class="hidden sm:inline">Display TV</span>
         </UButton>
-        <div class="text-right shrink-0">
+        <div class="text-right shrink-0 hidden min-[400px]:block">
           <div class="font-mono text-[14px] font-semibold tabular-nums text-cms-ink">
             {{ timeHHMM }}
           </div>
@@ -131,6 +131,7 @@ function eventSchedule(ev: PublicEvent): string {
             {{ zoneLabel }}
           </div>
         </div>
+        <PortalAuthMenu />
       </div>
     </header>
 
@@ -412,7 +413,7 @@ function eventSchedule(ev: PublicEvent): string {
           <article
             v-for="ev in filteredEvents"
             :key="ev.id"
-            class="bg-white rounded-cms-lg border border-cms-border shadow-cms-sm overflow-hidden"
+            class="relative bg-white rounded-cms-lg border border-cms-border shadow-cms-sm overflow-hidden hover:border-cms-border-strong transition"
           >
             <div class="flex gap-3 p-4">
               <!-- Date block -->
@@ -443,7 +444,9 @@ function eventSchedule(ev: PublicEvent): string {
                   </span>
                 </div>
                 <h3 class="font-serif text-[16px] font-semibold leading-[1.25] mb-1.5">
-                  {{ ev.title }}
+                  <NuxtLink :to="tp(`/events/${ev.slug}`)" class="hover:text-cms-green-800 after:absolute after:inset-0">
+                    {{ ev.title }}
+                  </NuxtLink>
                 </h3>
                 <p v-if="ev.description" class="text-[12.5px] text-cms-ink-2 line-clamp-2 mb-2.5">
                   {{ ev.description }}
@@ -484,14 +487,23 @@ function eventSchedule(ev: PublicEvent): string {
                   </div>
                   <UButton
                     v-if="ev.requiresRegistration && ev.displayStatus !== 'full' && mosque?.isRegistrationOpen !== false"
+                    :to="tp(`/events/${ev.slug}`)"
+                    size="xs"
+                    trailing-icon="i-lucide-arrow-right"
+                    class="relative z-10 shrink-0 rounded-full"
+                  >
+                    Daftar
+                  </UButton>
+                  <UButton
+                    v-else
+                    :to="tp(`/events/${ev.slug}`)"
                     size="xs"
                     color="neutral"
                     variant="soft"
-                    disabled
-                    icon="i-lucide-clock-4"
-                    class="shrink-0 rounded-full"
+                    trailing-icon="i-lucide-arrow-right"
+                    class="relative z-10 shrink-0 rounded-full"
                   >
-                    Pendaftaran segera hadir
+                    Detail
                   </UButton>
                 </div>
               </div>

@@ -4,11 +4,18 @@ import { loginSchema, type LoginInput } from '#shared/schemas/auth'
 const tp = useTenantPath()
 
 definePageMeta({ layout: 'auth' })
-useHead({ title: 'Masuk — OpenMasjid CMS' })
-
 const route = useRoute()
 const { signIn, isStaff } = useAuth()
 const { tenant } = useTenantContext()
+
+useHead({ title: () => `Masuk — ${tenant.value?.name ?? 'OpenMasjid'}` })
+
+/** Only follow redirects inside this mosque (no open redirect / cross-tenant hop). */
+const redirectTarget = computed(() => {
+  const r = route.query.redirect
+  return typeof r === 'string' && r.startsWith(`${tp('/')}/`) && !r.startsWith('//') ? r : null
+})
+const registerTo = computed(() => ({ path: tp('/auth/register'), query: redirectTarget.value ? { redirect: redirectTarget.value } : {} }))
 
 const state = reactive<Partial<LoginInput>>({ email: '', password: '', remember: true })
 const showPassword = ref(false)
@@ -20,16 +27,11 @@ async function onSubmit(event: FormSubmitEvent<LoginInput>) {
   loading.value = true
   try {
     await signIn(event.data.email, event.data.password, event.data.remember)
-    if (!isStaff.value) {
-      error.value = 'Akun Anda bukan pengurus DKM sehingga tidak dapat membuka CMS.'
-      return
-    }
-    // Only follow redirects inside this mosque (no open redirect / cross-tenant hop).
-    const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith(`${tp('/')}/`)
-      && !route.query.redirect.startsWith('//')
-      ? route.query.redirect
-      : tp('/admin')
-    await navigateTo(redirect)
+    // Staff land on the dashboard, jamaah on their tickets. A member following
+    // a redirect into /admin would only hit a 403, so send them to tickets.
+    const target = redirectTarget.value
+    if (isStaff.value) await navigateTo(target ?? tp('/admin'))
+    else await navigateTo(target && !target.startsWith(tp('/admin')) ? target : tp('/my-tickets'))
   }
   catch (e) {
     const err = e as { status?: number, message?: string }
@@ -49,10 +51,10 @@ async function onSubmit(event: FormSubmitEvent<LoginInput>) {
       Masuk
     </div>
     <h1 class="font-serif text-[32px] font-semibold m-0 mb-2 tracking-[-0.4px] text-cms-ink">
-      Selamat datang kembali
+      Masuk ke akun {{ tenant?.name ?? 'masjid' }}
     </h1>
     <p class="text-sm text-cms-muted m-0 mb-7 max-w-[380px]">
-      Masuk dengan akun pengurus <span class="font-semibold text-cms-ink-2">{{ tenant?.name }}</span>.
+      Untuk jamaah dan pengurus <span class="font-semibold text-cms-ink-2">{{ tenant?.name }}</span>.
       Akun berlaku khusus untuk masjid ini.
     </p>
 
@@ -75,7 +77,7 @@ async function onSubmit(event: FormSubmitEvent<LoginInput>) {
           v-model="state.email"
           type="email"
           autocomplete="email"
-          placeholder="nama@masjid.id"
+          placeholder="nama@email.com"
           icon="i-lucide-mail"
           size="lg"
           class="w-full"
@@ -122,12 +124,23 @@ async function onSubmit(event: FormSubmitEvent<LoginInput>) {
         block
         :loading="loading"
         icon="i-lucide-log-in"
-        :label="loading ? 'Memverifikasi...' : 'Masuk ke Dasbor'"
+        :label="loading ? 'Memverifikasi...' : 'Masuk'"
       />
     </UForm>
 
     <p class="text-[13px] text-cms-muted text-center mt-6">
-      Belum memiliki akun pengurus? Hubungi admin masjid.
+      Jamaah baru?
+      <NuxtLink :to="registerTo" class="font-semibold text-cms-green-700 hover:text-cms-green-800">
+        Buat akun
+      </NuxtLink>
+    </p>
+    <p class="text-[12px] text-cms-muted-2 text-center mt-2">
+      Akun pengurus dibuat lewat undangan pemilik masjid.
+    </p>
+    <p class="text-center mt-4">
+      <NuxtLink :to="tp('/')" class="inline-flex items-center gap-1 text-[12.5px] font-semibold text-cms-muted hover:text-cms-ink">
+        <UIcon name="i-lucide-arrow-left" class="size-3.5" /> Kembali ke halaman masjid
+      </NuxtLink>
     </p>
   </div>
 </template>

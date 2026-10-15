@@ -209,6 +209,44 @@ async function main() {
   const crossInvite = await a.req('GET', `/public/invitations/${token}`)
   check('B invitation token is invalid on A', crossInvite.status === 404, `got ${crossInvite.status}`)
 
+  // ── Member registration & QR tickets ────────────────────────────────────
+  const eventSlug = async (c: Client, id: string) => (await c.req('GET', `/admin/events/${id}`)).json.slug as string
+  const slugA = await eventSlug(a, A.eventId)
+  const slugB = await eventSlug(b, B.eventId)
+
+  // Same email signs up as a member in both mosques (accounts are per mosque).
+  const memberEmail = `member-${suffix}@isolation.test`
+  const memberA = new Client(a.slug)
+  const memberB = new Client(b.slug)
+  for (const m of [memberA, memberB]) {
+    const r = await m.req('POST', '/auth/sign-up/email', { name: 'Jamaah Uji', email: memberEmail, password: 'password123' })
+    check(`member sign-up on /${m.slug}`, r.status === 200, `got ${r.status}`)
+  }
+
+  const regA = await memberA.req('POST', `/public/events/${slugA}/register`)
+  const regB = await memberB.req('POST', `/public/events/${slugB}/register`)
+  check('members register in their own mosque', regA.status === 201 && regB.status === 201, `${regA.status}/${regB.status}`)
+
+  const crossSlug = await memberA.req('GET', `/public/events/${slugB}`)
+  check('B event slug does not resolve under A', crossSlug.status === 404, `got ${crossSlug.status}`)
+  const crossReg = await memberA.req('POST', `/public/events/${slugB}/register`)
+  check('A member cannot register for B event via A', crossReg.status === 404, `got ${crossReg.status}`)
+
+  const memberAOnB = new Client(b.slug)
+  memberAOnB.cookies = new Map(memberA.cookies)
+  const cookieHop = await memberAOnB.req('POST', `/public/events/${slugB}/register`)
+  check('A member cookie is not a session on B', cookieHop.status === 401, `got ${cookieHop.status}`)
+
+  const mineA = (await memberA.req('GET', '/me/registrations')).json as any[]
+  check('A member sees only A registrations', mineA.length === 1 && mineA[0].event.slug === slugA, JSON.stringify(mineA.map((r) => r.event.slug)))
+
+  const crossTicket = await a.req('POST', '/admin/check-in', { code: regB.json.ticket })
+  check('B ticket cannot check in at A', crossTicket.status === 404, `got ${crossTicket.status}`)
+  const ownTicket = await a.req('POST', '/admin/check-in', { code: regA.json.ticket })
+  check('A ticket checks in at A', ownTicket.status === 200 && ownTicket.json.alreadyCheckedIn === false, `got ${ownTicket.status}`)
+  const memberCheckIn = await memberA.req('POST', '/admin/check-in', { code: regA.json.ticket })
+  check('members cannot use the check-in endpoint', memberCheckIn.status === 403, `got ${memberCheckIn.status}`)
+
   // ── Database (RLS as the app role) ──────────────────────────────────────
   if (APP_DB_URL) {
     const sql = postgres(APP_DB_URL, { max: 1, prepare: false })
