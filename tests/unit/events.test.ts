@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deriveEventStatus, deriveRegistrantStatus } from '../../shared/utils/events'
+import { deriveEventStatus, deriveRegistrantStatus, registrationAvailability } from '../../shared/utils/events'
 
 const ev = (over: Partial<{ status: string, startDate: string, endDate: string | null, capacity: number | null }> = {}) => ({
   status: 'published',
@@ -35,5 +35,22 @@ describe('deriveRegistrantStatus', () => {
     expect(deriveRegistrantStatus({ attendedAt: new Date(), cancelledAt: new Date() })).toBe('cancelled')
     expect(deriveRegistrantStatus({ attendedAt: '2026-10-20T10:00:00Z', cancelledAt: null })).toBe('attended')
     expect(deriveRegistrantStatus({ attendedAt: null, cancelledAt: null })).toBe('confirmed')
+  })
+})
+
+describe('registrationAvailability', () => {
+  const e = { status: 'published', startDate: '2026-10-20', endDate: null, capacity: 2, requiresRegistration: true }
+
+  it('open, full, closed, past, not-required', () => {
+    expect(registrationAvailability(e, 1, '2026-10-15', true)).toBe('open')
+    expect(registrationAvailability(e, 2, '2026-10-15', true)).toBe('full')
+    expect(registrationAvailability(e, 0, '2026-10-15', false)).toBe('closed')
+    expect(registrationAvailability({ ...e, status: 'draft' }, 0, '2026-10-15', true)).toBe('closed')
+    expect(registrationAvailability(e, 0, '2026-10-21', true)).toBe('past')
+    expect(registrationAvailability({ ...e, requiresRegistration: false }, 0, '2026-10-15', true)).toBe('not-required')
+  })
+
+  it('stays open on the event day itself', () => {
+    expect(registrationAvailability(e, 0, '2026-10-20', true)).toBe('open')
   })
 })

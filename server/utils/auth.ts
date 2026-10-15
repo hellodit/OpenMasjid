@@ -153,13 +153,14 @@ export async function getAuthUser(event: H3Event): Promise<AuthUser | null> {
   return user
 }
 
-export type Access = 'public' | 'staff' | 'admin' | 'owner'
+export type Access = 'public' | 'member' | 'staff' | 'admin' | 'owner'
 
 export async function requireAccess(event: H3Event, access: Exclude<Access, 'public'>): Promise<AuthUser> {
   const user = await getAuthUser(event)
   if (!user) throw createError({ statusCode: 401, statusMessage: 'Silakan masuk terlebih dahulu' })
   const ok
-    = access === 'staff' ? user.role === 'admin' || user.role === 'viewer'
+    = access === 'member' ? true // any signed-in account of THIS mosque (getAuthUser checks the tenant)
+      : access === 'staff' ? user.role === 'admin' || user.role === 'viewer'
       : access === 'admin' ? user.role === 'admin'
         : user.isOwner
   if (!ok) throw createError({ statusCode: 403, statusMessage: 'Anda tidak punya akses' })
@@ -176,6 +177,7 @@ export interface TenantHandlerContext<A extends Access> {
 /**
  * Handler for /api/t/<slug>/… routes:
  *  - `public`  no login (user resolved if present)
+ *  - `member`  any signed-in account of this mosque (jamaah or staff)
  *  - `staff`   admin + viewer (read)
  *  - `admin`   admin (write)
  *  - `owner`   tenant owner (team management)

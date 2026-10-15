@@ -38,3 +38,35 @@ export function deriveRegistrantStatus(r: { attendedAt: Date | string | null, ca
   if (r.attendedAt) return 'attended'
   return 'confirmed'
 }
+
+export type RegistrationAvailability =
+  | 'open' // can register now
+  | 'not-required' // event does not use registration
+  | 'closed' // mosque closed registrations (settings) or event not published
+  | 'full'
+  | 'past'
+
+export const REGISTRATION_AVAILABILITY_LABELS: Record<RegistrationAvailability, string> = {
+  'open': 'Pendaftaran dibuka',
+  'not-required': 'Terbuka untuk umum, tanpa pendaftaran',
+  'closed': 'Pendaftaran ditutup',
+  'full': 'Kuota penuh',
+  'past': 'Kegiatan sudah selesai',
+}
+
+/**
+ * Whether a member may register for an event right now. Used by the server
+ * (enforcement) and the UI (button state). `today` = mosque-local YYYY-MM-DD.
+ */
+export function registrationAvailability(
+  e: { status: string, startDate: string, endDate: string | null, capacity: number | null, requiresRegistration: boolean },
+  registeredCount: number,
+  today: string,
+  mosqueRegistrationOpen: boolean,
+): RegistrationAvailability {
+  if (!e.requiresRegistration) return 'not-required'
+  if ((e.endDate ?? e.startDate) < today) return 'past'
+  if (e.status !== 'published' || !mosqueRegistrationOpen) return 'closed'
+  if (e.capacity && registeredCount >= e.capacity) return 'full'
+  return 'open'
+}
