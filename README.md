@@ -40,12 +40,19 @@ Dibangun dengan **Nuxt 4 + Nuxt UI v4**, **PostgreSQL** via **Drizzle ORM**, val
 - Tanggal Hijriyah otomatis (kalender Umm al-Qura via `Intl`) berdampingan dengan tanggal Masehi.
 - Daftar kegiatan publik dengan filter kategori (Kajian, Tahsin, TPA, Zakat, Muharram, Umum).
 - Status pendaftaran real-time: *Pendaftaran dibuka · Sedang berjalan · Kuota penuh · Akan datang*.
+- **Pendaftaran jamaah** — buat akun jamaah, daftar kegiatan, tiket QR di "Tiket saya", batal/daftar ulang.
+- **Pengumuman masjid** (yang disematkan tampil paling atas) dan **jadwal petugas** (khatib & imam Jum'at,
+  imam/muadzin sholat harian) pekan ini.
 
 ### CMS Admin
 - **Dashboard** — statistik kegiatan aktif, jamaah terdaftar, tingkat kehadiran, plus chart pendaftaran 7 hari terakhir.
 - **Manajemen Kegiatan** — list/grid view, filter kategori, search, halaman detail, form buat/edit dengan upload banner, tag, dan pemateri.
 - **Pendaftar (Registrants)** — daftar kehadiran jamaah per kegiatan (terhubung ke akun `users`), dengan status hadir/belum dan tombol check-in untuk operator.
 - **Kategori** — kelola taksonomi kegiatan masjid.
+- **Check-in QR** — scan tiket jamaah dengan kamera HP atau ketik kode tiket.
+- **Pengumuman** — draf/terbit/arsip, periode tayang, sematkan, tampilkan di layar TV.
+- **Jadwal Petugas** — tampilan per pekan, satu petugas per slot, salin dari pekan lalu.
+- **Lengkapi Profil** — wizard setelah daftar (lokasi untuk jadwal sholat, alamat & kontak) + checklist di dashboard.
 - **Pengaturan Masjid** — profil masjid, logo, koordinat & arah kiblat, metode perhitungan waktu sholat, koreksi menit per waktu sholat, preview tampilan TV.
 - **Manajemen Pengguna** — 3 peran: `admin` (pengurus DKM), `viewer` (read-only DKM), `jamaah` (jamaah terdaftar).
 - **Auth** — login, lupa & reset password (Better Auth, sesi cookie). `/admin` hanya untuk role `admin` & `viewer`.
@@ -55,7 +62,8 @@ Dibangun dengan **Nuxt 4 + Nuxt UI v4**, **PostgreSQL** via **Drizzle ORM**, val
 - Jam besar real-time dengan detik & format 24 jam, tanggal Masehi + Hijriyah.
 - Kartu **Next Prayer** dengan hitung mundur menuju adzan berikutnya.
 - Tabel jadwal 5 waktu sholat (Subuh · Dzuhur · Ashar · Maghrib · Isya).
-- **Marquee pengumuman** scrolling di bagian bawah layar.
+- **Marquee pengumuman** scrolling di bagian bawah layar (pengumuman masjid, lalu kegiatan).
+- Petugas hari ini (imam, khatib Jum'at).
 - Info tambahan: suhu, kelembapan, arah kiblat.
 - Layout responsif untuk rasio layar TV (16:9 / 16:10).
 
@@ -191,14 +199,23 @@ Dibangun dengan **Nuxt 4 + Nuxt UI v4**, **PostgreSQL** via **Drizzle ORM**, val
 | Rute | Mode | Deskripsi |
 |------|------|-----------|
 | `/` | Publik | Landing: cari masjid (nama/kota) → beranda masjid, plus direktori |
-| `/register` | Publik | Daftarkan masjid baru (membuat akun pemilik) |
-| `/<masjid>` | Publik | Portal jamaah — profil, jadwal sholat & kegiatan |
+| `/register` | Publik | Daftarkan masjid baru: cukup nama masjid, nama, email, password |
+| `/<masjid>` | Publik | Portal jamaah — profil, jadwal sholat, pengumuman, petugas & kegiatan |
+| `/<masjid>/events/<slug>` | Publik | Detail kegiatan & pendaftaran jamaah |
+| `/<masjid>/my-tickets` | Jamaah | Tiket QR kegiatan yang diikuti |
+| `/<masjid>/announcements` | Publik | Semua pengumuman yang sedang tayang |
+| `/<masjid>/duties` | Publik | Jadwal petugas per pekan |
 | `/<masjid>/display` | Publik TV | Tampilan layar besar |
 | `/<masjid>/transparency` | Publik | Ringkasan keuangan untuk jamaah |
-| `/<masjid>/auth/login` | Auth | Login pengurus masjid tersebut |
+| `/<masjid>/auth/login` | Auth | Login pengurus/jamaah masjid tersebut |
+| `/<masjid>/auth/register` | Auth | Buat akun jamaah |
 | `/<masjid>/auth/forgot-password`, `/reset-password` | Auth | Reset password |
 | `/<masjid>/auth/accept-invite` | Auth | Terima undangan pengurus |
-| `/<masjid>/admin` | Admin | Dashboard |
+| `/<masjid>/admin` | Admin | Dashboard (+ checklist lengkapi profil) |
+| `/<masjid>/admin/setup` | Admin | Wizard lengkapi profil setelah daftar |
+| `/<masjid>/admin/announcements` | Admin | Pengumuman |
+| `/<masjid>/admin/duties` | Admin | Jadwal petugas |
+| `/<masjid>/admin/check-in` | Admin | Check-in tiket QR |
 | `/<masjid>/admin/events/**` | Admin | Kegiatan: daftar, detail, tambah, ubah |
 | `/<masjid>/admin/registrants` | Admin | Pendaftar & check-in |
 | `/<masjid>/admin/categories` | Admin | Kategori kegiatan |
