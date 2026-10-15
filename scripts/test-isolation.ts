@@ -76,7 +76,7 @@ async function onboard(label: string) {
   const slug = `iso-${label}-${suffix}`
   const c = new Client(slug)
   const res = await c.req('POST', `${BASE}/api/onboarding`, {
-    mosque: { name: `Masjid Uji ${label.toUpperCase()}`, slug, city: 'Testing', timezone: 'Asia/Jakarta' },
+    mosque: { name: `Masjid Uji ${label.toUpperCase()}`, slug },
     owner: { name: `Owner ${label}`, email: `owner-${suffix}@isolation.test`, password: 'password123' },
   })
   if (res.status !== 201) throw new Error(`onboarding ${label} failed: ${res.status} ${JSON.stringify(res.json)}`)
@@ -106,6 +106,10 @@ async function fill(c: Client) {
   })).json
   const invite = (await c.req('POST', '/admin/team/invitations', { email: `staff-${suffix}@isolation.test`, role: 'viewer' })).json
   const team = (await c.req('GET', '/admin/team')).json
+  const announcement = (await c.req('POST', '/admin/announcements', { title: `Pengumuman ${c.slug}` })).json
+  const duty = (await c.req('POST', '/admin/duties', {
+    date: '2099-01-02', service: 'jumuah', role: 'khatib', personName: `Khatib ${c.slug}`, phone: '0812000',
+  })).json
   return {
     categoryId,
     eventId: event.id as string,
@@ -115,6 +119,8 @@ async function fill(c: Client) {
     invitationId: invite.invitation.id as string,
     inviteUrl: invite.url as string,
     ownerId: team.members[0].id as string,
+    announcementId: announcement.id as string,
+    dutyId: duty.id as string,
   }
 }
 
@@ -169,6 +175,10 @@ async function main() {
     ['update event category', 'PUT', `/admin/categories/${B.categoryId}`, { name: 'hacked' }],
     ['revoke invitation', 'DELETE', `/admin/team/invitations/${B.invitationId}`, undefined],
     ['change team member', 'PUT', `/admin/team/${B.ownerId}`, { isActive: false }],
+    ['update announcement', 'PUT', `/admin/announcements/${B.announcementId}`, { title: 'hacked' }],
+    ['delete announcement', 'DELETE', `/admin/announcements/${B.announcementId}`, undefined],
+    ['update duty', 'PUT', `/admin/duties/${B.dutyId}`, { date: '2099-01-02', service: 'jumuah', role: 'khatib', personName: 'hacked' }],
+    ['delete duty', 'DELETE', `/admin/duties/${B.dutyId}`, undefined],
   ]
   for (const [name, method, url, body] of writes) {
     const r = await a.req(method, url, body)
@@ -194,6 +204,10 @@ async function main() {
     ['accounts', '/admin/cashbook/accounts?includeArchived=1', (j) => j.map((x: any) => x.id)],
     ['public events', '/public/events?limit=50', (j) => j.map((e: any) => e.id)],
     ['team', '/admin/team', (j) => j.members.map((m: any) => m.id)],
+    ['announcements', '/admin/announcements', (j) => j.map((x: any) => x.id)],
+    ['public announcements', '/public/announcements?limit=50', (j) => j.map((x: any) => x.id)],
+    ['duties', '/admin/duties?from=2099-01-01&to=2099-01-31', (j) => j.items.map((x: any) => x.id)],
+    ['public duties', '/public/duties?from=2099-01-01&to=2099-01-31', (j) => j.items.map((x: any) => x.id)],
   ]
   const bIds = new Set(Object.values(B))
   for (const [name, url, ids] of listChecks) {
@@ -201,6 +215,15 @@ async function main() {
     const leaked = r.status === 200 ? ids(r.json).filter((id) => bIds.has(id)) : ['<request failed>']
     check(`A ${name} list contains no B rows`, leaked.length === 0, leaked.join(','))
   }
+  const publicDuties = (await a.req('GET', '/public/duties?from=2099-01-01&to=2099-01-31')).json
+  check('public duties show own roster without phone numbers',
+    publicDuties.items.length === 1 && !('phone' in publicDuties.items[0]), JSON.stringify(publicDuties.items))
+  const copyB = await a.req('POST', '/admin/duties/copy', { sourceFrom: '2099-01-01', sourceTo: '2099-01-07', targetFrom: '2099-01-08' })
+  const bCopied = (await b.req('GET', '/admin/duties?from=2099-01-08&to=2099-01-14')).json.items.length
+  check('copying duties in A never touches B', copyB.status === 200 && bCopied === 0, `status ${copyB.status}, B rows ${bCopied}`)
+  const anon = new Client(a.slug)
+  check('setup endpoint needs a session', (await anon.req('GET', '/admin/setup')).status === 401)
+
   const dash = (await a.req('GET', '/admin/dashboard')).json
   check('A dashboard counts only A events', dash.stats.activeEvents === 1, `activeEvents=${dash.stats.activeEvents}`)
 

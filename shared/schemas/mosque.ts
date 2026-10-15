@@ -60,3 +60,24 @@ export const mosqueSettingsSchema = base.pick({ name: true }).extend({
   iqamahOffsets: prayerMinutes(0, 60),
 })
 export type MosqueSettingsInput = z.input<typeof mosqueSettingsSchema>
+
+/** Setup wizard (after sign-up): partial location/contact update. */
+export const mosqueSetupSchema = mosqueSettingsSchema
+  .pick({
+    addressLine: true,
+    city: true,
+    province: true,
+    postalCode: true,
+    latitude: true,
+    longitude: true,
+    timezone: true,
+    phone: true,
+    whatsapp: true,
+    email: true,
+  })
+  .partial()
+  .extend({
+    /** Mark the wizard as finished (or skipped). */
+    complete: z.boolean().optional(),
+  })
+export type MosqueSetupInput = z.input<typeof mosqueSetupSchema>

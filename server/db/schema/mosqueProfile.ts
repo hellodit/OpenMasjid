@@ -1,6 +1,7 @@
 import {
   boolean,
   char,
+  timestamp,
   integer,
   jsonb,
   numeric,
@@ -62,6 +63,9 @@ export const mosqueProfile = pgTable(
       .$type<PrayerMinutes>()
       .notNull()
       .default({ fajr: 10, sunrise: 0, dhuhr: 10, asr: 10, maghrib: 5, isha: 10 }),
+
+    /** Set when the owner finishes (or skips) the post-registration setup wizard. */
+    setupCompletedAt: timestamp('setup_completed_at', { withTimezone: true }),
 
     updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
     ...timestamps,

@@ -1,5 +1,7 @@
 import { relations } from 'drizzle-orm'
 import { accounts, sessions } from './auth'
+import { announcements } from './announcements'
+import { dutyAssignments } from './duties'
 import { cashAccounts } from './cashAccounts'
 import { categories } from './categories'
 import { eventAgendaItems, eventSpeakers, events } from './events'
@@ -20,6 +22,10 @@ export const usersRelations = relations(users, ({ many }) => ({
   checkIns: many(registrants, { relationName: 'registrant_checker' }),
   transactionsCreated: many(transactions, { relationName: 'transaction_creator' }),
   transactionsUpdated: many(transactions, { relationName: 'transaction_updater' }),
+  announcementsCreated: many(announcements, { relationName: 'announcement_creator' }),
+  announcementsUpdated: many(announcements, { relationName: 'announcement_updater' }),
+  dutiesCreated: many(dutyAssignments, { relationName: 'duty_creator' }),
+  dutiesUpdated: many(dutyAssignments, { relationName: 'duty_updater' }),
 }))
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -120,4 +126,14 @@ export const transactionsRelations = relations(transactions, ({ one }) => ({
     references: [users.id],
     relationName: 'transaction_updater',
   }),
+}))
+
+export const announcementsRelations = relations(announcements, ({ one }) => ({
+  creator: one(users, { fields: [announcements.createdBy], references: [users.id], relationName: 'announcement_creator' }),
+  updater: one(users, { fields: [announcements.updatedBy], references: [users.id], relationName: 'announcement_updater' }),
+}))
+
+export const dutyAssignmentsRelations = relations(dutyAssignments, ({ one }) => ({
+  creator: one(users, { fields: [dutyAssignments.createdBy], references: [users.id], relationName: 'duty_creator' }),
+  updater: one(users, { fields: [dutyAssignments.updatedBy], references: [users.id], relationName: 'duty_updater' }),
 }))

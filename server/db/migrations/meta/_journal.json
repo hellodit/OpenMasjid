@@ -22,6 +22,20 @@
       "when": 1792029677460,
       "tag": "0002_tenant_city",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792035392304,
+      "tag": "0003_announcements_duties_setup",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792035396679,
+      "tag": "0004_force_rls_announcements_duties",
+      "breakpoints": true
     }
   ]
 }
