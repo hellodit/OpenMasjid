@@ -1,5 +1,11 @@
 # Rancangan Arsitektur Database — OpenMasjid
 
+> **Status implementasi**: sumber kebenaran adalah `server/db/schema/*.ts` + migrasi di `server/db/migrations/`.
+> Dokumen ini adalah rancangan; beberapa tabel (tags, prayer_overrides, announcements, display_settings, media_assets)
+> belum diimplementasikan. Pengaturan jadwal sholat saat ini disimpan di kolom `mosque_profile`
+> (`prayer_method`, `asr_madhab`, `prayer_adjustments`, `iqamah_offsets`), pembicara di `event_speakers`,
+> susunan acara di `event_agenda_items`, tag kegiatan sebagai kolom `events.tags text[]`.
+
 > Dokumen ini menjelaskan rancangan skema database untuk aplikasi **OpenMasjid** (CMS Masjid + portal jamaah + TV display). Skema diturunkan dari halaman & komponen yang sudah ada pada Nuxt app (lihat [app/pages/admin](../app/pages/admin/) dan [app/composables/useAdminMock.ts](../app/composables/useAdminMock.ts)).
 >
 > Versi ini dirancang untuk **single-mosque**: satu deployment melayani satu masjid. Profil masjid disimpan sebagai baris singleton di tabel `mosque_profile`.
@@ -101,11 +107,13 @@ Profil masjid. Hanya satu baris — dipastikan via constraint.
 > Kontak (telepon/email/WA/website) dan tautan media sosial sekarang menjadi kolom langsung di `mosque_profile` — single-mosque tidak butuh tabel multi-baris terpisah.
 
 ### `users`
-Semua akun di aplikasi — internal DKM (`admin`/`viewer`) **maupun** jamaah biasa (`jamaah`). Autentikasi (login, password reset, session) ditangani oleh **Supabase Auth** — token & session tidak disimpan di tabel aplikasi.
+Semua akun di aplikasi — internal DKM (`admin`/`viewer`) **maupun** jamaah biasa (`jamaah`). Autentikasi (login, password reset, session) ditangani oleh **Better Auth** — tabel ini adalah model `user` Better Auth (`name` → `full_name`); session/credential disimpan di tabel `sessions`, `accounts`, `verifications`.
 
 | Kolom | Tipe | Catatan |
 |-------|------|---------|
-| `id` | `uuid` PK | sama dengan `auth.users.id` di Supabase |
+| `id` | `uuid` PK | dibuat Better Auth (`generateId: 'uuid'`) |
+| `email_verified` | `boolean` DEFAULT false | dikelola Better Auth |
+| `image` | `text` NULL | avatar URL (Better Auth) |
 | `email` | `citext` UNIQUE | unik global |
 | `full_name` | `text` NOT NULL | |
 | `phone` | `text` NULL | |
@@ -369,7 +377,7 @@ Constraint check yang wajib:
 ## 10. Keamanan & Privasi
 
 - **PII** (`users.email`, `users.phone`, `users.full_name`) hanya boleh diakses oleh user itu sendiri atau user dengan `role = 'admin'`. Endpoint publik (mis. daftar event) tidak boleh mengembalikan PII pendaftar.
-- **Auth**: login/password reset/session ditangani Supabase Auth. Aplikasi cukup memetakan `auth.users.id` ke baris `users` internal.
+- **Auth**: login/password reset/session ditangani Better Auth (`server/utils/auth.ts`) dengan tabel `sessions`, `accounts` (hash password), `verifications`. Role dibaca ulang dari `users` di setiap request admin.
 - **Backup**: harian (full) + WAL streaming. Retensi 30 hari.
 - **GDPR/UU PDP**: saat user "lupakan saya" — anonymize baris `users` (`full_name='Anonim'`, `email=NULL`, `phone=NULL`, `is_active=false`); baris `registrants` terkait tetap untuk arsip kehadiran tetapi sudah tidak punya PII via FK.
 
